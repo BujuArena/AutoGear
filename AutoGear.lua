@@ -1664,17 +1664,31 @@ end
 
 function AutoGearGetClassAndSpec()
 	local localizedClass, class, spec, classID
-	if (AutoGearDB.Override and AutoGearDB.OverrideSpec) then
-		class, spec = string.match(AutoGearDB.OverrideSpec,"(.+): ?(.+)")
-		localizedClass = string.gsub(class, "%s+", "")
-		class = string.upper(localizedClass)
-		classID = AutoGearReverseClassIDList[class].id
+
+	-- Override가 켜져 있고 저장된 OverrideSpec 이 있으면 거기서 먼저 시도
+	if AutoGearDB.Override and AutoGearDB.OverrideSpec then
+		-- "죽음의 기사: Blood" / "악마사냥꾼: Havoc" 같은 형식 가정
+		local overrideLocalizedClass, overrideSpec = string.match(AutoGearDB.OverrideSpec, "(.+): ?(.+)")
+		if overrideLocalizedClass and overrideSpec then
+			-- 로컬 직업명 -> 영문 직업 토큰 (예: "악마사냥꾼" -> "DEMONHUNTER")
+			local overrideClassToken = AutoGearReverseClassList[overrideLocalizedClass]
+			if overrideClassToken and AutoGearReverseClassIDList[overrideClassToken] then
+				localizedClass = overrideLocalizedClass
+				class        = overrideClassToken
+				spec         = overrideSpec
+				classID      = AutoGearReverseClassIDList[overrideClassToken].id
+			end
+		end
 	end
-	if ((localizedClass == nil) or (class == nil) or (spec == nil)) then
+
+	-- 위에서 제대로 못 구했으면 실제 캐릭 정보로 fallback
+	if (localizedClass == nil) or (class == nil) or (spec == nil) or (classID == nil) then
 		localizedClass, class, spec, classID = AutoGearDetectClassAndSpec()
 	end
+
 	return localizedClass, class, spec, classID
 end
+
 
 function AutoGearDetectClassAndSpec()
 	local localizedClass, class, spec, classID
