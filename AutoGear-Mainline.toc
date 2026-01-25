@@ -1,4 +1,4 @@
-## Interface: 110107, 110200, 110205
+## Interface: 110107, 110200, 110205, 120000, 120001
 ## Title: AutoGear
 ## Notes: Automatically chooses loot and equips gear
 ## Author: Synthetikaryote, BujuArena
