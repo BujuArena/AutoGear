@@ -1,11 +1,4 @@
-## Interface: 110107, 110200, 110205, 110207, 120000, 120001
-## Interface-Mainline: 120000
-## Interface-Mists: 50500, 50501, 50502, 50503
-## Interface-Cata: 40402
-## Interface-Wrath: 30404, 30405
-## Interface-TBC: 20404, 20505
-## Interface-Titan: 38000
-## Interface-Vanilla: 11507, 11508
+## Interface: 11507, 11508, 20404, 20505, 30404, 30405, 38000, 40402, 50500, 50501, 50502, 50503, 110107, 110200, 110205, 110207, 120000, 120001
 ## Title: AutoGear
 ## Notes: Automatically chooses loot and equips gear
 ## Author: Synthetikaryote, BujuArena
