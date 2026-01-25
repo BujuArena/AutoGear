@@ -68,3 +68,8 @@ jobs:
         uses: BigWigsMods/packager@master
         with:
           args: -g mists
+
+      - name: Package and Release for Titan Reforged
+        uses: BigWigsMods/packager@master
+        with:
+          args: -g titan
