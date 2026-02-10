@@ -18,6 +18,10 @@ jobs:
 
     # we can run our steps on pretty much anything, but the "ubuntu-latest" image is a safe bet
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      repository-projects: write
 
     # specify the environment variables used by the packager, matching the secrets from the project on GitHub
     env:
