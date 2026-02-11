@@ -3685,7 +3685,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			if textLeftText == ITEM_UNIQUE or textLeftText == ITEM_UNIQUE_EQUIPPABLE then
 				info.unique = 1
 			elseif string.find(textLeftText, ITEM_UNIQUE_EQUIPPABLE_SANITIZED_PATTERN) then
-				local uniqueType, numEquippable = string.match(textLeftText, ITEM_UNIQUE_EQUIPPABLE_SANITIZED_PATTERN..": ([^%(]+) %(([0-9]+)%)")
+				local uniqueType, numEquippable = string.match(textLeftText, ITEM_UNIQUE_EQUIPPABLE_SANITIZED_PATTERN.."[：:]+ ?(%C-) ?[%(（]-(%d+)[%)）]-$")
 				if uniqueType and numEquippable then
 					info.uniqueType = uniqueType
 					info.numEquippable = tonumber(numEquippable)
