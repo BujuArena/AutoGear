@@ -3690,7 +3690,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 					info.uniqueType = uniqueType
 					info.numEquippable = tonumber(numEquippable)
 				end
-				AutoGearPrint("AutoGear: uniqueType, numEquippable in \""..textLeftText.."\": \""..uniqueType.."\", "..tostring(numEquippable), 3)
+				AutoGearPrint("AutoGear: uniqueType, numEquippable in \""..textLeftText.."\": \""..tostring(uniqueType).."\", "..tostring(numEquippable), 3)
 			end
 			local multiplier = 1.0
 			if string.find(text, "chance to") and not string.find(text, "improves") then multiplier = multiplier/3.0 end
