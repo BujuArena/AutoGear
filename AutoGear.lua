@@ -3101,56 +3101,161 @@ function AutoGearConsiderItem(info, bag, slot, rollOn, chooseReward)
 	if info.empty
 	or (info.guid and AutoGearBestItemsAlreadyAdded[info.guid])
 	or (info.isAmmoBag
-	and	AutoGearBestItems[INVSLOT_RANGED].info.isRangedWeapon)
+	and AutoGearBestItems[INVSLOT_RANGED].info.isRangedWeapon)
 	and (not AutoGearIsAmmoBagValidForRangedWeapon(info, AutoGearBestItems[INVSLOT_RANGED].info)) then
 		return
 	end
-	if (info.isMount and (not info.alreadyKnown)) then return true end
+
+	if (info.isMount and (not info.alreadyKnown)) then
+		return true
+	end
+
 	if (info.usable or (rollOn and info.Within5levels)) then
 		local score = AutoGearDetermineItemScore(info)
+
 		if info.isGear and info.validGearSlots then
-			local firstValidGearSlot = info.validGearSlots[1]
-			local lowestScoringValidGearSlot = firstValidGearSlot
-			local lowestScoringValidGearSlotScore = AutoGearBestItems[firstValidGearSlot].score or 0
-			for _, gearSlot in pairs(info.validGearSlots) do
-				local skipThisSlot = false
-				for _, otherGearSlot in pairs(info.validGearSlots) do
-					if gearSlot ~= otherGearSlot then
-						if not AutoGearIsGearPairEquippableTogether(info, AutoGearBestItems[otherGearSlot].info) then
-							skipThisSlot = true
+			-- Bag-like items must NOT use the generic pair-equippable loop below.
+			-- For bags, compare all valid bag slots directly and pick the lowest-score slot.
+			if (info.invType == Enum.InventoryType.IndexBagType)
+			or (info.invType == Enum.InventoryType.IndexQuiverType) then
+				local bestReplaceSlot = nil
+				local bestReplaceScore = nil
+
+				for _, gearSlot in pairs(info.validGearSlots) do
+					local currentSlotData = AutoGearBestItems[gearSlot]
+					if currentSlotData then
+						local currentScore = currentSlotData.score or 0
+						local isCurrentEmpty = currentSlotData.info and currentSlotData.info.empty
+						local isCurrentUnusable = currentSlotData.info and currentSlotData.info.unusable
+
+						-- empty/unusable slot first
+						if isCurrentEmpty or isCurrentUnusable then
+							bestReplaceSlot = gearSlot
+							bestReplaceScore = currentScore
+							break
+						end
+
+						if (bestReplaceSlot == nil) or (currentScore < bestReplaceScore) then
+							bestReplaceSlot = gearSlot
+							bestReplaceScore = currentScore
 						end
 					end
 				end
-				if not skipThisSlot and
-				((not AutoGearBestItems[gearSlot]) or
-				(AutoGearBestItems[gearSlot].info.empty or
-				(not AutoGearBestItems[gearSlot].score) or
-				(AutoGearBestItems[gearSlot].score < lowestScoringValidGearSlotScore))) then
-					lowestScoringValidGearSlot = gearSlot
-					lowestScoringValidGearSlotScore = AutoGearBestItems[gearSlot] and AutoGearBestItems[gearSlot].score or 0
+
+				if bestReplaceSlot ~= nil then
+      					AutoGearPrint("AutoGear: Bag candidate "..tostring(info.link or info.name)..
+						" score="..tostring(score)..
+						" bestReplaceSlot="..tostring(bestReplaceSlot)..
+						" bestReplaceScore="..tostring(bestReplaceScore), 1)                                  
+					local targetData = AutoGearBestItems[bestReplaceSlot]
+					local targetScore = (targetData and targetData.score) or 0
+					local targetInfo = targetData and targetData.info or nil
+
+					if (
+						((score > targetScore) and (not info.isAmmoBag))
+						or (targetInfo and targetInfo.empty)
+						or (targetInfo and targetInfo.unusable)
+						or (info.isAmmoBag
+							and AutoGearIsAmmoBagValidForBestKnownRangedWeapon(info)
+							and ((score > targetScore)
+							or (targetInfo and (not AutoGearIsAmmoBagValidForBestKnownRangedWeapon(targetInfo)))))
+					) then
+						if info.guid then
+							AutoGearBestItemsAlreadyAdded[info.guid] = 1
+						end
+
+						AutoGearBestItems[bestReplaceSlot].info = info
+						AutoGearBestItems[bestReplaceSlot].score = score
+						AutoGearBestItems[bestReplaceSlot].equipped = nil
+						AutoGearBestItems[bestReplaceSlot].bag = bag
+						AutoGearBestItems[bestReplaceSlot].slot = slot
+						AutoGearBestItems[bestReplaceSlot].rollOn = rollOn
+						AutoGearBestItems[bestReplaceSlot].chooseReward = chooseReward
+						return true
+					end
+				end
+
+				return
+			end
+			local bestReplaceSlot = nil
+			local bestReplaceScore = nil
+
+			for _, gearSlot in pairs(info.validGearSlots) do
+				local canUseThisSlot = true
+				local currentSlotData = AutoGearBestItems[gearSlot]
+
+				-- 슬롯 데이터 자체가 없으면 비교 대상 제외
+				if not currentSlotData then
+					canUseThisSlot = false
+				end
+
+				-- 반지/장신구처럼 다중 슬롯인 경우:
+				-- 이 슬롯에 장착한다고 가정했을 때 나머지 슬롯과 공존 가능한지 확인
+				if canUseThisSlot then
+					for _, otherGearSlot in pairs(info.validGearSlots) do
+						if gearSlot ~= otherGearSlot then
+							local otherSlotData = AutoGearBestItems[otherGearSlot]
+							if otherSlotData and otherSlotData.info then
+								if not AutoGearIsGearPairEquippableTogether(info, otherSlotData.info) then
+									canUseThisSlot = false
+									break
+								end
+							end
+						end
+					end
+				end
+
+				if canUseThisSlot then
+					local currentScore = 0
+					if currentSlotData and currentSlotData.score then
+						currentScore = currentSlotData.score
+					end
+
+					local isCurrentEmpty = currentSlotData and currentSlotData.info and currentSlotData.info.empty
+					local isCurrentUnusable = currentSlotData and currentSlotData.info and currentSlotData.info.unusable
+
+					-- 빈 슬롯/사용불가 슬롯 우선
+					if isCurrentEmpty or isCurrentUnusable then
+						bestReplaceSlot = gearSlot
+						bestReplaceScore = currentScore
+						break
+					end
+
+					-- 가능한 슬롯들 중 점수가 가장 낮은 슬롯 선택
+					if (bestReplaceSlot == nil) or (currentScore < bestReplaceScore) then
+						bestReplaceSlot = gearSlot
+						bestReplaceScore = currentScore
+					end
 				end
 			end
 
-			if (
-				((score > lowestScoringValidGearSlotScore) and (not info.isAmmoBag))
-				or AutoGearBestItems[lowestScoringValidGearSlot].info.empty
-				or AutoGearBestItems[lowestScoringValidGearSlot].info.unusable
-				or (info.isAmmoBag
-					and AutoGearIsAmmoBagValidForBestKnownRangedWeapon(info)
-					and ((score > lowestScoringValidGearSlotScore)
-					or (not AutoGearIsAmmoBagValidForBestKnownRangedWeapon(AutoGearBestItems[lowestScoringValidGearSlot].info)))
-				)
-			) then
-				-- AutoGearPrint(info.link.." bag and slot: "..tostring(bag or "nil").." "..tostring(slot or "nil"),0)
-				if info.guid then AutoGearBestItemsAlreadyAdded[info.guid] = 1 end
-				AutoGearBestItems[lowestScoringValidGearSlot].info = info
-				AutoGearBestItems[lowestScoringValidGearSlot].score = score
-				AutoGearBestItems[lowestScoringValidGearSlot].equipped = nil
-				AutoGearBestItems[lowestScoringValidGearSlot].bag = bag
-				AutoGearBestItems[lowestScoringValidGearSlot].slot = slot
-				AutoGearBestItems[lowestScoringValidGearSlot].rollOn = rollOn
-				AutoGearBestItems[lowestScoringValidGearSlot].chooseReward = chooseReward
-				return true
+			if bestReplaceSlot ~= nil then
+				local targetData = AutoGearBestItems[bestReplaceSlot]
+				local targetScore = (targetData and targetData.score) or 0
+				local targetInfo = targetData and targetData.info or nil
+
+				if (
+					((score > targetScore) and (not info.isAmmoBag))
+					or (targetInfo and targetInfo.empty)
+					or (targetInfo and targetInfo.unusable)
+					or (info.isAmmoBag
+						and AutoGearIsAmmoBagValidForBestKnownRangedWeapon(info)
+						and ((score > targetScore)
+						or (targetInfo and (not AutoGearIsAmmoBagValidForBestKnownRangedWeapon(targetInfo)))))
+				) then
+					if info.guid then
+						AutoGearBestItemsAlreadyAdded[info.guid] = 1
+					end
+
+					AutoGearBestItems[bestReplaceSlot].info = info
+					AutoGearBestItems[bestReplaceSlot].score = score
+					AutoGearBestItems[bestReplaceSlot].equipped = nil
+					AutoGearBestItems[bestReplaceSlot].bag = bag
+					AutoGearBestItems[bestReplaceSlot].slot = slot
+					AutoGearBestItems[bestReplaceSlot].rollOn = rollOn
+					AutoGearBestItems[bestReplaceSlot].chooseReward = chooseReward
+					return true
+				end
 			end
 		end
 	end
@@ -4364,6 +4469,27 @@ function AutoGearPutItemInEmptyBagSlot()
 	end
 end
 
+function AutoGearInventoryBagSlotToContainerID(invSlot)
+	if (not invSlot) then return nil end
+	if invSlot < AutoGearFirstEquippableBagSlot or invSlot > AutoGearLastEquippableBagSlot then
+		return nil
+	end
+	return (invSlot - AutoGearFirstEquippableBagSlot + 1)
+end
+
+function AutoGearSortBagsSafe()
+	if C_Container and C_Container.SortBags then
+		C_Container.SortBags()
+	elseif SortBags then
+		SortBags()
+	elseif SortBagsRightToLeft then
+		SortBagsRightToLeft()
+	else
+		return false
+	end
+	return true
+end
+
 function AutoGearScan()
 	AutoGearSetStatWeights()
 	if (not AutoGearCurrentWeighting) then
@@ -4949,9 +5075,46 @@ function AutoGearMain()
 									AutoGearPrint("Error: The current equip action has either no container or no slot! This should never happen, so it must be a bug. It's now been saved to global variable AutoGearBrokenAction, so try \"/dump AutoGearBrokenAction\" and send the output to the AutoGear author.",0)
 									table.remove(AutoGearActionQueue, i)
 								end
-								PickupContainerItem(curAction.container, curAction.slot)
-								EquipCursorItem(curAction.replaceSlot)
-								curAction.ensuringEquipped = 1
+								-- special handling for bag upgrades:
+								-- if the replacement bag item is inside the bag being replaced,
+								-- use Auto Sort and retry a limited number of times.
+								local replacingBagContainer = AutoGearInventoryBagSlotToContainerID(curAction.replaceSlot)
+
+								if replacingBagContainer
+								and curAction.container
+								and (curAction.container == replacingBagContainer) then
+									if (not curAction.bagSwapSortRetryCount) then
+										curAction.bagSwapSortRetryCount = 0
+									end
+
+									if (not curAction.lastBagSwapSortAttemptAt) then
+										curAction.lastBagSwapSortAttemptAt = 0
+									end
+
+									-- throttle to avoid log spam / sort spam
+									if GetTime() < curAction.lastBagSwapSortAttemptAt + 0.7 then
+										curAction.t = GetTime() + 0.3
+									else
+										curAction.lastBagSwapSortAttemptAt = GetTime()
+
+										if curAction.bagSwapSortRetryCount < 3 and AutoGearSortBagsSafe() then
+											curAction.bagSwapSortRetryCount = curAction.bagSwapSortRetryCount + 1
+											AutoGearPrint("AutoGear: Bag upgrade blocked because the new bag is inside the bag being replaced. Sorting bags and retrying ("..curAction.bagSwapSortRetryCount.."/3).", 1)
+
+											-- force re-resolve item location after sorting
+											curAction.container = nil
+											curAction.slot = nil
+											curAction.t = GetTime() + 1.0
+										else
+											AutoGearPrint("AutoGear: Bag upgrade skipped after sorting retries. The replacement bag is still inside the bag being replaced.", 0)
+											table.remove(AutoGearActionQueue, i)
+										end
+									end
+								else
+									PickupContainerItem(curAction.container, curAction.slot)
+									EquipCursorItem(curAction.replaceSlot)
+									curAction.ensuringEquipped = 1
+								end
 							end
 						else
 							table.remove(AutoGearActionQueue, i)
