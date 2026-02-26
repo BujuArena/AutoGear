@@ -1,4 +1,4 @@
---AutoGear
+﻿--AutoGear
 
 -- to do:
 -- implement classic direct % crit and direct % hit
@@ -178,6 +178,80 @@ function AutoGearPrint(text, verbosity)
 	if verbosity == nil then verbosity = 0 end
 	if (AutoGearDB.AllowedVerbosity == nil) or (verbosity <= AutoGearDB.AllowedVerbosity) then
 		print(text)
+	end
+end
+
+-- Debug helpers
+-- Enable by setting: AutoGearDB.DebugEnabled = true
+function AutoGearDebugPrint(text)
+	if AutoGearDB and AutoGearDB.DebugEnabled then
+		print("AutoGear[DBG]: "..tostring(text))
+	end
+end
+
+function AutoGearDebugItemShort(info)
+    if info == nil then
+        return "<nil>"
+    end
+
+    local name = nil
+    if info.link ~= nil then
+        name = info.link
+    elseif info.name ~= nil then
+        name = info.name
+    else
+        name = "<?>"
+    end
+
+    local ilvl = nil
+    if info.level ~= nil then
+        ilvl = info.level
+    elseif info.itemLevel ~= nil then
+        ilvl = info.itemLevel
+    elseif info.ilvl ~= nil then
+        ilvl = info.ilvl
+    else
+        ilvl = "?"
+    end
+
+    local inv = nil
+    if info.invType ~= nil then
+        inv = info.invType
+    elseif info.equipLoc ~= nil then
+        inv = info.equipLoc
+    else
+        inv = "?"
+    end
+
+    local guid = nil
+    if info.guid ~= nil then
+        guid = info.guid
+    else
+        guid = ""
+    end
+
+    return tostring(name) .. " ilvl=" .. tostring(ilvl) .. " inv=" .. tostring(inv) .. " guid=" .. tostring(guid)
+end
+
+function AutoGearDebugDumpSlots(slotList)
+	if not (AutoGearBestItems and AutoGearEquippedItems) then
+		AutoGearDebugPrint("Best/Equipped tables not ready.")
+		return
+	end
+
+	for i=1, (slotList and #slotList or 0) do
+		local invSlot = slotList[i]
+		local best = AutoGearBestItems[invSlot]
+		local eq = AutoGearEquippedItems[invSlot]
+		if best and eq then
+			AutoGearDebugPrint("Slot "..tostring(invSlot)..
+				" equippedScore="..tostring(eq.score).." equipped="..AutoGearDebugItemShort(eq.info)..
+				" | bestScore="..tostring(best.score).." bestEquippedFlag="..tostring(best.equipped)..
+				" best="..AutoGearDebugItemShort(best.info)..
+				" bag="..tostring(best.bag).." bagSlot="..tostring(best.slot))
+		else
+			AutoGearDebugPrint("Slot "..tostring(invSlot).." missing data.")
+		end
 	end
 end
 
@@ -1707,12 +1781,11 @@ end
 function AutoGearGetClassAndSpec()
 	local localizedClass, class, spec, classID
 
-	-- Override가 켜져 있고 저장된 OverrideSpec 이 있으면 거기서 먼저 시도
+	-- Override媛 耳쒖졇 ?덇퀬 ??λ맂 OverrideSpec ???덉쑝硫?嫄곌린??癒쇱? ?쒕룄
 	if AutoGearDB.Override and AutoGearDB.OverrideSpec then
-		-- "죽음의 기사: Blood" / "악마사냥꾼: Havoc" 같은 형식 가정
-		local overrideLocalizedClass, overrideSpec = string.match(AutoGearDB.OverrideSpec, "(.+): ?(.+)")
+		-- "二쎌쓬??湲곗궗: Blood" / "?낅쭏?щ깷袁? Havoc" 媛숈? ?뺤떇 媛??		local overrideLocalizedClass, overrideSpec = string.match(AutoGearDB.OverrideSpec, "(.+): ?(.+)")
 		if overrideLocalizedClass and overrideSpec then
-			-- 로컬 직업명 -> 영문 직업 토큰 (예: "악마사냥꾼" -> "DEMONHUNTER")
+			-- 濡쒖뺄 吏곸뾽紐?-> ?곷Ц 吏곸뾽 ?좏겙 (?? "?낅쭏?щ깷袁? -> "DEMONHUNTER")
 			local overrideClassToken = AutoGearReverseClassList[overrideLocalizedClass]
 			if overrideClassToken and AutoGearReverseClassIDList[overrideClassToken] then
 				localizedClass = overrideLocalizedClass
@@ -1723,7 +1796,7 @@ function AutoGearGetClassAndSpec()
 		end
 	end
 
-	-- 위에서 제대로 못 구했으면 실제 캐릭 정보로 fallback
+	-- ?꾩뿉???쒕?濡?紐?援ы뻽?쇰㈃ ?ㅼ젣 罹먮┃ ?뺣낫濡?fallback
 	if (localizedClass == nil) or (class == nil) or (spec == nil) or (classID == nil) then
 		localizedClass, class, spec, classID = AutoGearDetectClassAndSpec()
 	end
@@ -2026,6 +2099,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			OverridePawnScale = false,
 			PawnScale = "",
 			DebugInfoInTooltips = false,
+			DebugEnabled = false,
 			AllowedVerbosity = 1,
 			LockGearSlots = true,
 			LockedGearSlots = AutoGearGetDefaultLockedGearSlots()
@@ -2382,6 +2456,16 @@ SlashCmdList["AutoGear"] = function(msg)
 		AutoGearPrint("AutoGear: Looks like you are a"..(realSpec:find("^[AEIOUaeiou]") and "n " or " ")..RAID_CLASS_COLORS[realClass]:WrapTextInColorCode(realSpec.." "..localizedRealClass).."."..((usingPawn or (AutoGearDB.Override and ((realClassID ~= overrideClassID) or (realSpec ~= overrideSpec)))) and ("  However, AutoGear is using "..(usingPawn and ("Pawn scale \""..PawnGetScaleColor(pawnScaleName)..(pawnScaleLocalizedName or pawnScaleName)..FONT_COLOR_CODE_CLOSE.."\"") or (RAID_CLASS_COLORS[overrideClass]:WrapTextInColorCode(overrideSpec.." "..localizedOverrideClass).." weights")).." for gear evaluation due to the \""..(usingPawn and "Use Pawn to evaluate upgrades" or "Override specialization").."\" option.") or "").."  AutoGear is using weapons value \""..weapons.."\" from \""..((AutoGearDB.Override and ((realClassID ~= overrideClassID) or (realSpec ~= overrideSpec))) and (RAID_CLASS_COLORS[overrideClass]:WrapTextInColorCode(overrideSpec.." "..localizedOverrideClass)) or (RAID_CLASS_COLORS[realClass]:WrapTextInColorCode(realSpec.." "..localizedRealClass))).."\" to determine which weapons are valid.  CanDualWield() returns \""..(CanDualWield() and "true" or "false").."\".", 0) 
 	elseif (param1 == "verbosity") or (param1 == "allowedverbosity") then
 		AutoGearSetAllowedVerbosity(param2)
+	elseif (param1 == "debug") then
+		if (param2 == "enable" or param2 == "on" or param2 == "start") then
+			AutoGearDB.DebugEnabled = true
+			AutoGearPrint("AutoGear: Debug logging is now enabled.", 0)
+		elseif (param2 == "disable" or param2 == "off" or param2 == "stop") then
+			AutoGearDB.DebugEnabled = false
+			AutoGearPrint("AutoGear: Debug logging is now disabled.", 0)
+		else
+			AutoGearPrint("AutoGear: Debug logging is currently "..((AutoGearDB.DebugEnabled and "enabled") or "disabled")..". Usage: \"/ag debug [enable/on/start]/[disable/off/stop]\".", 0)
+		end
 	elseif ((param1 == "setspec") or
 	(param1 == "overridespec") or
 	(param1 == "overridespecialization") or
@@ -2472,6 +2556,7 @@ function AutoGearPrintHelp()
 	AutoGearPrint("AutoGear:    '/ag sell [enable/on/start]/[disable/off/stop]': toggle automatic selling of grey items", 0)
 	AutoGearPrint("AutoGear:    '/ag repair [enable/on/start]/[disable/off/stop]': toggle automatic repairing", 0)
 	AutoGearPrint("AutoGear:    '/ag verbosity [0/1/2/3]': set allowed verbosity level; valid levels are: 0 ("..AutoGearGetAllowedVerbosityName(0).."), 1 ("..AutoGearGetAllowedVerbosityName(1).."), 2 ("..AutoGearGetAllowedVerbosityName(2).."), 3 ("..AutoGearGetAllowedVerbosityName(3)..")", 0)
+	AutoGearPrint("AutoGear:    '/ag debug [enable/on/start]/[disable/off/stop]': toggle debug log output", 0)
 end
 
 function AutoGearSetAllowedVerbosity(allowedverbosity)
@@ -2862,6 +2947,134 @@ function AutoGearDeepCopy(object)
 	return newObject
 end
 
+local AutoGearPairCandidatesByInvType
+
+local function AutoGearCollectPairedSlotCandidates(invType, slotA, slotB)
+	local candidates = {}
+
+	local function addCandidate(info, score, equipped, bag, slot, equippedSlot)
+		if not info or not info.isGear or info.invType ~= invType then return end
+		if info.unusable and (not info.empty) then return end
+		table.insert(candidates, {
+			info = info,
+			score = score or AutoGearDetermineItemScore(info),
+			equipped = equipped,
+			bag = bag,
+			slot = slot,
+			equippedSlot = equippedSlot
+		})
+	end
+
+	addCandidate(
+		AutoGearEquippedItems[slotA] and AutoGearEquippedItems[slotA].info,
+		AutoGearEquippedItems[slotA] and AutoGearEquippedItems[slotA].score,
+		true,
+		nil,
+		nil,
+		slotA
+	)
+	addCandidate(
+		AutoGearEquippedItems[slotB] and AutoGearEquippedItems[slotB].info,
+		AutoGearEquippedItems[slotB] and AutoGearEquippedItems[slotB].score,
+		true,
+		nil,
+		nil,
+		slotB
+	)
+
+	local tracked = AutoGearPairCandidatesByInvType and AutoGearPairCandidatesByInvType[invType]
+	if tracked then
+		AutoGearDebugPrint("Paired tracked invType="..tostring(invType).." trackedCount="..tostring(#tracked))
+		for i = 1, #tracked do
+			local item = tracked[i]
+			addCandidate(item.info, item.score, nil, item.bag, item.slot, nil)
+		end
+	end
+
+	return candidates
+end
+
+local function AutoGearApplyPairedBestItems(slot, picked)
+	if not picked then return end
+	if not AutoGearBestItems[slot] then AutoGearBestItems[slot] = {} end
+	AutoGearBestItems[slot].info = picked.info
+	AutoGearBestItems[slot].score = picked.score
+	AutoGearBestItems[slot].equipped = (picked.equipped and picked.equippedSlot == slot) and true or nil
+	AutoGearBestItems[slot].bag = picked.bag
+	AutoGearBestItems[slot].slot = picked.slot
+	AutoGearBestItems[slot].rollOn = nil
+	AutoGearBestItems[slot].chooseReward = nil
+end
+
+local function AutoGearOptimizePairedSlots(invType, slotA, slotB)
+	local candidates = AutoGearCollectPairedSlotCandidates(invType, slotA, slotB)
+	local bestI, bestJ, bestPairScore
+
+	AutoGearDebugPrint("Paired optimize begin invType="..tostring(invType).." candidates="..tostring(#candidates))
+	for i = 1, #candidates do
+		local c = candidates[i]
+		AutoGearDebugPrint(
+			"Paired candidate #"..tostring(i)..
+			" score="..tostring(c.score)..
+			" equippedSlot="..tostring(c.equippedSlot)..
+			" bag="..tostring(c.bag)..
+			" slot="..tostring(c.slot)..
+			" unique="..tostring(c.info and c.info.unique)..
+			" uniqueType="..tostring(c.info and c.info.uniqueType)..
+			" numEquippable="..tostring(c.info and c.info.numEquippable)..
+			" item="..AutoGearDebugItemShort(c.info)
+		)
+	end
+
+	for i = 1, #candidates do
+		for j = 1, #candidates do
+			if i ~= j then
+				local a = candidates[i]
+				local b = candidates[j]
+				local pairOk = AutoGearIsGearPairEquippableTogether(a.info, b.info)
+				AutoGearDebugPrint("Paired check "..tostring(i).."+"..tostring(j).." ok="..tostring(not not pairOk))
+				if pairOk then
+					local pairScore = (a.score or 0) + (b.score or 0)
+					if (not bestPairScore) or (pairScore > bestPairScore) then
+						bestPairScore = pairScore
+						bestI = i
+						bestJ = j
+						AutoGearDebugPrint("Paired new best "..tostring(i).."+"..tostring(j).." score="..tostring(pairScore))
+					end
+				end
+			end
+		end
+	end
+
+	if not bestI or not bestJ then
+		AutoGearDebugPrint("Paired optimize: no equippable pair found for invType="..tostring(invType))
+		return
+	end
+
+	local first = candidates[bestI]
+	local second = candidates[bestJ]
+	local directMatches = ((first.equippedSlot == slotA) and 1 or 0) + ((second.equippedSlot == slotB) and 1 or 0)
+	local swappedMatches = ((first.equippedSlot == slotB) and 1 or 0) + ((second.equippedSlot == slotA) and 1 or 0)
+	if swappedMatches > directMatches then
+		first, second = second, first
+	end
+
+	AutoGearDebugPrint(
+		"Paired apply slots "..tostring(slotA).."/"..tostring(slotB)..
+		" directMatches="..tostring(directMatches)..
+		" swappedMatches="..tostring(swappedMatches)
+	)
+
+	AutoGearApplyPairedBestItems(slotA, first)
+	AutoGearApplyPairedBestItems(slotB, second)
+
+	AutoGearDebugPrint(
+		"Paired optimize slots "..tostring(slotA).."/"..tostring(slotB)..
+		" => "..AutoGearDebugItemShort(first.info).." + "..AutoGearDebugItemShort(second.info)..
+		" total="..tostring((first.score or 0) + (second.score or 0))
+	)
+end
+
 function AutoGearUpdateBestItems()
 	AutoGearUpdateEquippedItems()
 
@@ -2872,6 +3085,10 @@ function AutoGearUpdateBestItems()
 
 	-- table to track whether an item's been added
 	AutoGearBestItemsAlreadyAdded = {}
+	AutoGearPairCandidatesByInvType = {
+		[Enum.InventoryType.IndexFingerType] = {},
+		[Enum.InventoryType.IndexTrinketType] = {}
+	}
 
 	--consider all items in bags
 	for bag = 0, NUM_BAG_SLOTS do
@@ -2881,7 +3098,15 @@ function AutoGearUpdateBestItems()
 			-- AutoGearPrint((info.link or info.name or "nil").." bag and slot: "..tostring(bag or "nil").." "..tostring(slot or "nil"),0)
 			AutoGearConsiderItem(info, bag, slot, nil)
 		end
+
 	end
+
+	-- Final pass for paired slots: choose the best equippable pair globally.
+	AutoGearOptimizePairedSlots(Enum.InventoryType.IndexFingerType, INVSLOT_FINGER1, INVSLOT_FINGER2)
+	AutoGearOptimizePairedSlots(Enum.InventoryType.IndexTrinketType, INVSLOT_TRINKET1, INVSLOT_TRINKET2)
+
+	-- Debug: dump ring/trinket decision state after scanning
+	AutoGearDebugDumpSlots({ INVSLOT_FINGER1, INVSLOT_FINGER2, INVSLOT_TRINKET1, INVSLOT_TRINKET2 })
 end
 
 function AutoGearConsiderAllItems(lootRollItemID, questRewardIDs, arbitraryItemInfo, noActions)
@@ -3113,6 +3338,22 @@ function AutoGearConsiderItem(info, bag, slot, rollOn, chooseReward)
 	if (info.usable or (rollOn and info.Within5levels)) then
 		local score = AutoGearDetermineItemScore(info)
 
+-- Debug: log ring/trinket candidates as they are evaluated
+if info.invType == Enum.InventoryType.IndexFingerType or info.invType == Enum.InventoryType.IndexTrinketType then
+	AutoGearDebugPrint("Consider "..AutoGearDebugItemShort(info).." score="..tostring(score)..
+		" bag="..tostring(bag).." slot="..tostring(slot)..
+		" validSlots="..tostring(info.numValidGearSlots))
+	if bag ~= nil and slot ~= nil and AutoGearPairCandidatesByInvType and AutoGearPairCandidatesByInvType[info.invType] then
+		table.insert(AutoGearPairCandidatesByInvType[info.invType], {
+			info = info,
+			score = score,
+			bag = bag,
+			slot = slot
+		})
+		AutoGearDebugPrint("Paired tracked add invType="..tostring(info.invType).." count="..tostring(#AutoGearPairCandidatesByInvType[info.invType]))
+	end
+end
+
 		if info.isGear and info.validGearSlots then
 			-- Bag-like items must NOT use the generic pair-equippable loop below.
 			-- For bags, compare all valid bag slots directly and pick the lowest-score slot.
@@ -3184,13 +3425,13 @@ function AutoGearConsiderItem(info, bag, slot, rollOn, chooseReward)
 				local canUseThisSlot = true
 				local currentSlotData = AutoGearBestItems[gearSlot]
 
-				-- 슬롯 데이터 자체가 없으면 비교 대상 제외
+				-- ?щ’ ?곗씠???먯껜媛 ?놁쑝硫?鍮꾧탳 ????쒖쇅
 				if not currentSlotData then
 					canUseThisSlot = false
 				end
 
-				-- 반지/장신구처럼 다중 슬롯인 경우:
-				-- 이 슬롯에 장착한다고 가정했을 때 나머지 슬롯과 공존 가능한지 확인
+				-- 諛섏?/?μ떊援ъ쿂???ㅼ쨷 ?щ’??寃쎌슦:
+				-- ???щ’???μ갑?쒕떎怨?媛?뺥뻽?????섎㉧吏 ?щ’怨?怨듭〈 媛?ν븳吏 ?뺤씤
 				if canUseThisSlot then
 					for _, otherGearSlot in pairs(info.validGearSlots) do
 						if gearSlot ~= otherGearSlot then
@@ -3214,14 +3455,14 @@ function AutoGearConsiderItem(info, bag, slot, rollOn, chooseReward)
 					local isCurrentEmpty = currentSlotData and currentSlotData.info and currentSlotData.info.empty
 					local isCurrentUnusable = currentSlotData and currentSlotData.info and currentSlotData.info.unusable
 
-					-- 빈 슬롯/사용불가 슬롯 우선
+					-- 鍮??щ’/?ъ슜遺덇? ?щ’ ?곗꽑
 					if isCurrentEmpty or isCurrentUnusable then
 						bestReplaceSlot = gearSlot
 						bestReplaceScore = currentScore
 						break
 					end
 
-					-- 가능한 슬롯들 중 점수가 가장 낮은 슬롯 선택
+					-- 媛?ν븳 ?щ’??以??먯닔媛 媛????? ?щ’ ?좏깮
 					if (bestReplaceSlot == nil) or (currentScore < bestReplaceScore) then
 						bestReplaceSlot = gearSlot
 						bestReplaceScore = currentScore
@@ -3254,6 +3495,7 @@ function AutoGearConsiderItem(info, bag, slot, rollOn, chooseReward)
 					AutoGearBestItems[bestReplaceSlot].slot = slot
 					AutoGearBestItems[bestReplaceSlot].rollOn = rollOn
 					AutoGearBestItems[bestReplaceSlot].chooseReward = chooseReward
+					AutoGearDebugPrint("BestReplaceSlot="..tostring(bestReplaceSlot).." set to "..AutoGearDebugItemShort(info).." score="..tostring(score))
 					return true
 				end
 			end
@@ -3790,7 +4032,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			if textLeftText == ITEM_UNIQUE or textLeftText == ITEM_UNIQUE_EQUIPPABLE then
 				info.unique = 1
 			elseif string.find(textLeftText, ITEM_UNIQUE_EQUIPPABLE_SANITIZED_PATTERN) then
-				local uniqueType, numEquippable = string.match(textLeftText, ITEM_UNIQUE_EQUIPPABLE_SANITIZED_PATTERN.."[：:]+ ?(%C-) ?[%(（]-(%d+)[%)）]-$")
+				local uniqueType, numEquippable = string.match(textLeftText, ITEM_UNIQUE_EQUIPPABLE_SANITIZED_PATTERN.."[竊?]+ ?(%C-) ?[%(竊?-(%d+)[%)竊?-$")
 				if uniqueType and numEquippable then
 					info.uniqueType = uniqueType
 					info.numEquippable = tonumber(numEquippable)
@@ -4599,22 +4841,48 @@ end
 
 function AutoGearIsGearPairEquippableTogether(a, b)
 	if (not a) or (not b) or a.empty or b.empty then return 1 end
-	if (not a.validGearSlots)
-	or (not b.validGearSlots)
-	or (a.guid == b.guid)
-	or ((a.id == b.id)
+	if (not a.validGearSlots) then
+		AutoGearDebugPrint("Pair reject: a has no valid slots -> "..AutoGearDebugItemShort(a))
+		return
+	end
+	if (not b.validGearSlots) then
+		AutoGearDebugPrint("Pair reject: b has no valid slots -> "..AutoGearDebugItemShort(b))
+		return
+	end
+	if (a.guid == b.guid) then
+		AutoGearDebugPrint("Pair reject: same guid")
+		return
+	end
+	if ((a.id == b.id)
 	and ((GetItemCount(a.id, true) < 2)
-	or (a.unique)))
-	or (a.uniqueType and (a.uniqueType == b.uniqueType) and (a.numEquippable < 2) and (b.numEquippable < 2))
-	or (a.ammoBagRangedAttackSpeed and b.ammoBagRangedAttackSpeed)
-	or ((a.is1hWeaponOrOffHand and b.is1hWeaponOrOffHand)
-	and ((weapons == "dagger and any")
-	and (a.subclassID ~= Enum.ItemWeaponSubclass.Dagger)
-	and (b.subclassID ~= Enum.ItemWeaponSubclass.Dagger))
-	or ((weapons == "weapon and shield")
-	and (a.subclassID ~= Enum.ItemArmorSubclass.Shield)
-	and (b.subclassID ~= Enum.ItemArmorSubclass.Shield))) then
-		-- AutoGearPrint("AG: "..a.link.." ("..(a.guid or "missing guid")..") and "..b.link.." ("..(b.guid or "missing guid")..") are not equippable together", 3)
+	or (a.unique))) then
+		AutoGearDebugPrint("Pair reject: same item id not enough copies or unique. id="..tostring(a.id))
+		return
+	end
+	if (a.uniqueType and (a.uniqueType == b.uniqueType) and (a.numEquippable < 2) and (b.numEquippable < 2)) then
+		AutoGearDebugPrint("Pair reject: unique type cap. uniqueType="..tostring(a.uniqueType))
+		return
+	end
+	if (a.ammoBagRangedAttackSpeed and b.ammoBagRangedAttackSpeed) then
+		AutoGearDebugPrint("Pair reject: dual ammo bag speed bonus")
+		return
+	end
+	local violatesWeaponPairingRule =
+		(a.is1hWeaponOrOffHand and b.is1hWeaponOrOffHand)
+		and (
+			(
+				(weapons == "dagger and any")
+				and (a.subclassID ~= Enum.ItemWeaponSubclass.Dagger)
+				and (b.subclassID ~= Enum.ItemWeaponSubclass.Dagger)
+			)
+			or (
+				(weapons == "weapon and shield")
+				and (a.subclassID ~= Enum.ItemArmorSubclass.Shield)
+				and (b.subclassID ~= Enum.ItemArmorSubclass.Shield)
+			)
+		)
+	if violatesWeaponPairingRule then
+		AutoGearDebugPrint("Pair reject: weapon pairing rule")
 		return
 	end
 	for _, firstSlot in pairs(a.validGearSlots) do
@@ -5130,3 +5398,4 @@ function AutoGearMain()
 		end
 	end
 end
+
