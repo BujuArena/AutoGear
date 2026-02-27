@@ -2761,7 +2761,11 @@ end
 
 function AutoGearHandleLootRollCallback(link, lootRollID)
 		local rollDecision, rollItemInfo, reason = AutoGearDecideRoll(link, lootRollID)
-		if rollItemInfo.unusable then AutoGearPrint("AutoGear: "..link.." will not be equipped.  "..reason, 1) end
+		if not rollItemInfo then
+			AutoGearPrint("AutoGear: Error: Could not read item info for "..(link and link or "the rollable loot")..".", 0)
+		elseif rollItemInfo.unusable then
+			AutoGearPrint("AutoGear: "..link.." will not be equipped.  "..reason, 1)
+		end
 		if rollDecision then
 			local newAction = {}
 			newAction.action = "roll"
@@ -4949,9 +4953,48 @@ function AutoGearMain()
 									AutoGearPrint("Error: The current equip action has either no container or no slot! This should never happen, so it must be a bug. It's now been saved to global variable AutoGearBrokenAction, so try \"/dump AutoGearBrokenAction\" and send the output to the AutoGear author.",0)
 									table.remove(AutoGearActionQueue, i)
 								end
-								PickupContainerItem(curAction.container, curAction.slot)
-								EquipCursorItem(curAction.replaceSlot)
-								curAction.ensuringEquipped = 1
+								-- prevent equip error when bag is replacing the bag it's inside
+								if curAction.replaceSlot >= AutoGearFirstEquippableBagSlot
+								and curAction.container == (curAction.replaceSlot - AutoGearFirstEquippableBagSlot + 1) then
+									if not curAction.movedOutOfBag then
+										local destBag, destSlot
+										for b = 0, NUM_BAG_SLOTS do
+											if b ~= curAction.container then
+												local freeSlots, bagType = GetContainerNumFreeSlots(b)
+												if bagType == 0 and freeSlots > 0 then
+													local slotMax = GetContainerNumSlots(b)
+													for s = 1, slotMax do
+														if not AutoGearGetContainerItemInfo(b, s) then
+															destBag = b
+															destSlot = s
+															break
+														end
+													end
+													if destBag then break end
+												end
+											end
+										end
+										if destBag then
+											PickupContainerItem(curAction.container, curAction.slot)
+											PickupContainerItem(destBag, destSlot)
+											curAction.container = destBag
+											curAction.slot = destSlot
+											curAction.movedOutOfBag = true
+										else
+											AutoGearPrint("AutoGear: Cannot equip bag because there is no empty slot in another bag to move it to.", 0)
+											table.remove(AutoGearActionQueue, i)
+										end
+									else
+										PickupContainerItem(curAction.container, curAction.slot)
+										EquipCursorItem(curAction.replaceSlot)
+										curAction.ensuringEquipped = 1
+										curAction.movedOutOfBag = nil
+									end
+								else
+									PickupContainerItem(curAction.container, curAction.slot)
+									EquipCursorItem(curAction.replaceSlot)
+									curAction.ensuringEquipped = 1
+								end
 							end
 						else
 							table.remove(AutoGearActionQueue, i)
