@@ -3764,7 +3764,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			if string.find(text, L["intellect"]) then info.Intellect = (info.Intellect or 0) + value end
 			if string.find(text, L["stamina"]) then info.Stamina = (info.Stamina or 0) + value end
 			if string.find(text, L["spirit"]) then info.Spirit = (info.Spirit or 0) + value end
-			if string.find(text, L["armor"]) and not string.find(text, "lowers their armor") then info.Armor = (info.Armor or 0) + value end
+			if string.find(text, L["armor"]) and not string.find(text, "lowers their armor") and not string.find(text, "armor penetration") then info.Armor = (info.Armor or 0) + value end
 			if string.find(text, "attack power") and not string.find(text, "when fighting") and (not string.find(text, "forms only") or class=="DRUID") then info.AttackPower = (info.AttackPower or 0) + value end
 			if ((string.find(text, "spell power") or string.find(text, "spell damage")) or
 				string.find(text, "damage and healing") or
@@ -3828,7 +3828,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			--check for red text on the right side
 			local textRight, textRightText
 			if tooltipData and tooltipData.lines then
-				textRight = tooltipData.lines[i].textRight
+				textRight = tooltipData.lines[i].rightText or tooltipData.lines[i].textRight
 				textRightText = textRight
 			else
 				textRight = getglobal("AutoGearTooltipTextRight"..i)
