@@ -1955,7 +1955,7 @@ local function optionsSetup(optionsMenu)
 		end
 
 		--set description, and if this option is a cvar shortcut, add explanation of cvars to description
-		local description = v["description"]..(v["cvar"] and "\n\nThis is a shortcut for the \""..v["cvar"].."\" CVar provided by Blizzard.  Toggling this will toggle that CVar." or "")
+		local description = v["description"]..(v["cvar"] and "\n\n"..L["This is a shortcut for the \"%s\" CVar provided by Blizzard.  Toggling this will toggle that CVar."]:format(v["cvar"]) or "")
 
 		--make a checkbox for this option
 		--put it on the page of its tab (options without a tab go to "Other"), starting a new section if needed
@@ -2112,12 +2112,12 @@ local function optionsSetup(optionsMenu)
 	frame[i]:SetWidth(100)
 	frame[i]:SetHeight(30)
 	frame[i]:SetScript("OnClick", function() AutoGearScan() end)
-	frame[i]:SetText("Scan")
+	frame[i]:SetText(L["Scan"])
 	optionsTabs:AddRow(optionsTabs.pages[1], frame[i], OPTIONS_BUTTON_SPACING, 4)
 	frame[i]:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_NONE")
 		GameTooltip:SetPoint("BOTTOMLEFT", self, "TOPLEFT")
-		GameTooltip:AddLine("Click this button to force a scan, the same way that AutoGear scans for gear upgrades in your bags whenever new gear is looted.\n\nTip: By equipping your old item, you can use this to help determine how AutoGear decided an item was an upgrade.",nil,nil,nil,false)
+		GameTooltip:AddLine(L["Click this button to force a scan, the same way that AutoGear scans for gear upgrades in your bags whenever new gear is looted.\n\nTip: By equipping your old item, you can use this to help determine how AutoGear decided an item was an upgrade."],nil,nil,nil,true)
 		GameTooltip:Show()
 	end)
 	frame[i]:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -2180,10 +2180,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "toggle", "gear", "equip" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically equip gear",
-				["description"] = "Automatically equip gear upgrades, depending on internal stat weights.  These stat weights are currently only configurable by editing the values in the AutoGearDefaultWeights table in AutoGear.lua.  If this is disabled, AutoGear will still scan for gear when receiving new items and viewing loot rolls, but will never equip an item automatically.",
-				["toggleDescriptionTrue"] = "Automatic gearing is now enabled.",
-				["toggleDescriptionFalse"] = "Automatic gearing is now disabled.  You can still manually scan bags for upgrades with the options menu button or \"/ag scan\".",
+				["label"] = L["Automatically equip gear"],
+				["description"] = L["Automatically equip gear upgrades, depending on internal stat weights.  These stat weights are currently only configurable by editing the values in the AutoGearDefaultWeights table in AutoGear.lua.  If this is disabled, AutoGear will still scan for gear when receiving new items and viewing loot rolls, but will never equip an item automatically."],
+				["toggleDescriptionTrue"] = L["Automatic gearing is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatic gearing is now disabled.  You can still manually scan bags for upgrades with the options menu button or \"/ag scan\"."],
 				["togglePostHook"] = function() AutoGearUpdateBestItems() end
 			},
 			{
@@ -2193,10 +2193,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "roll", "loot", "rolling" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically roll on greens and BoP blues",
-				["description"] = "Automatically roll on group loot of green rarity and blues which bind when picked up, depending on internal stat weights.  If this is disabled, AutoGear will still evaluate these loot rolls and print its evaluation if verbosity is set to 1 ("..AutoGearGetAllowedVerbosityName(1)..") or higher.",
-				["toggleDescriptionTrue"] = "Automatically rolling on loot of green rarity and blues which bind when picked up is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically rolling on loot of green rarity and blues which bind when picked up is now disabled.  AutoGear will still try to equip gear received through other means, but you will have to roll on this loot manually."
+				["label"] = L["Automatically roll on greens and BoP blues"],
+				["description"] = L["Automatically roll on group loot of green rarity and blues which bind when picked up, depending on internal stat weights.  If this is disabled, AutoGear will still evaluate these loot rolls and print its evaluation if verbosity is set to 1 (%s) or higher."]:format(AutoGearGetAllowedVerbosityName(1)),
+				["toggleDescriptionTrue"] = L["Automatically rolling on loot of green rarity and blues which bind when picked up is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically rolling on loot of green rarity and blues which bind when picked up is now disabled.  AutoGear will still try to equip gear received through other means, but you will have to roll on this loot manually."]
 			},
 			{
 				["option"] = "AutoRollOnBoEBlues",
@@ -2205,10 +2205,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "rollboeblues", "rollonboeblues", "lootboeblues" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically roll on BoE blues",
-				["description"] = "Automatically roll on group loot of blue rarity which binds when equipped, depending on internal stat weights.  If this is disabled, AutoGear will still evaluate these loot rolls and print its evaluation if verbosity is set to 1 ("..AutoGearGetAllowedVerbosityName(1)..") or higher.",
-				["toggleDescriptionTrue"] = "Automatically rolling on group loot of blue rarity which binds when equipped is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically rolling on group loot of blue rarity which binds when equipped is now disabled.  AutoGear will still try to equip gear received through other means, but you will have to roll on this loot manually."
+				["label"] = L["Automatically roll on BoE blues"],
+				["description"] = L["Automatically roll on group loot of blue rarity which binds when equipped, depending on internal stat weights.  If this is disabled, AutoGear will still evaluate these loot rolls and print its evaluation if verbosity is set to 1 (%s) or higher."]:format(AutoGearGetAllowedVerbosityName(1)),
+				["toggleDescriptionTrue"] = L["Automatically rolling on group loot of blue rarity which binds when equipped is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically rolling on group loot of blue rarity which binds when equipped is now disabled.  AutoGear will still try to equip gear received through other means, but you will have to roll on this loot manually."]
 			},
 			{
 				["option"] = "AutoRollOnEpics",
@@ -2217,10 +2217,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "rollepics", "rollonepics", "lootepics" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically roll on epics",
-				["description"] = "Automatically roll on group loot of epic rarity, depending on internal stat weights.  If this is disabled, AutoGear will still evaluate these loot rolls and print its evaluation if verbosity is set to 1 ("..AutoGearGetAllowedVerbosityName(1)..") or higher.",
-				["toggleDescriptionTrue"] = "Automatically rolling on group loot of epic rarity is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically rolling on group loot of epic rarity is now disabled.  AutoGear will still try to equip gear received through other means, but you will have to roll on this loot manually."
+				["label"] = L["Automatically roll on epics"],
+				["description"] = L["Automatically roll on group loot of epic rarity, depending on internal stat weights.  If this is disabled, AutoGear will still evaluate these loot rolls and print its evaluation if verbosity is set to 1 (%s) or higher."]:format(AutoGearGetAllowedVerbosityName(1)),
+				["toggleDescriptionTrue"] = L["Automatically rolling on group loot of epic rarity is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically rolling on group loot of epic rarity is now disabled.  AutoGear will still try to equip gear received through other means, but you will have to roll on this loot manually."]
 			},
 			{
 				["option"] = "RollOnNonGearLoot",
@@ -2229,10 +2229,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "nongear", "nongearloot", "allloot" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Roll on non-gear loot",
-				["description"] = "Roll on all group loot, including loot that is not gear.  If this is enabled, AutoGear will roll GREED on non-gear, non-mount loot and NEED on mounts.",
-				["toggleDescriptionTrue"] = "Rolling on non-gear loot is now enabled.  AutoGear will roll GREED on non-gear, non-mount loot and NEED on mounts.",
-				["toggleDescriptionFalse"] = "Rolling on non-gear loot is now disabled."
+				["label"] = L["Roll on non-gear loot"],
+				["description"] = L["Roll on all group loot, including loot that is not gear.  If this is enabled, AutoGear will roll GREED on non-gear, non-mount loot and NEED on mounts."],
+				["toggleDescriptionTrue"] = L["Rolling on non-gear loot is now enabled.  AutoGear will roll GREED on non-gear, non-mount loot and NEED on mounts."],
+				["toggleDescriptionFalse"] = L["Rolling on non-gear loot is now disabled."]
 			},
 			{
 				["option"] = "NeverAutoNeed",
@@ -2241,10 +2241,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "neverautoneed", "neverneed", "noneed", "onlyautogreed", "onlygreed", "greedonly", "justgreed" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Never auto-need; only greed",
-				["description"] = "Never automatically roll NEED.  If this is enabled, AutoGear will be prevented from automatically rolling NEED when it detects an upgrade, leaving the loot roll interactive to allow manual control of that roll.  It will still be allowed to roll GREED when an upgrade is not detected and automatic rolling is enabled for the detected rarity.",
-				["toggleDescriptionTrue"] = "Rolling only GREED automatically is now enabled.  AutoGear will be unable to roll NEED automatically.",
-				["toggleDescriptionFalse"] = "Rolling only GREED automatically is now disabled.  AutoGear will be able to roll NEED on detected upgrades automatically."
+				["label"] = L["Never auto-need; only greed"],
+				["description"] = L["Never automatically roll NEED.  If this is enabled, AutoGear will be prevented from automatically rolling NEED when it detects an upgrade, leaving the loot roll interactive to allow manual control of that roll.  It will still be allowed to roll GREED when an upgrade is not detected and automatic rolling is enabled for the detected rarity."],
+				["toggleDescriptionTrue"] = L["Rolling only GREED automatically is now enabled.  AutoGear will be unable to roll NEED automatically."],
+				["toggleDescriptionFalse"] = L["Rolling only GREED automatically is now disabled.  AutoGear will be able to roll NEED on detected upgrades automatically."]
 			},
 			{
 				["option"] = "AutoConfirmBinding",
@@ -2253,10 +2253,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "bind", "boe", "soulbinding" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically confirm soul-binding for non-blues/non-epics",
-				["description"] = "Automatically confirm soul-binding when equipping an upgrade that does not have blue or epic rarity, causing it to become soulbound.  If this is disabled, AutoGear will still try to equip non-blue/non-epic binding gear, but you will have to confirm soul-binding manually.",
-				["toggleDescriptionTrue"] = "Automatically confirming soul-binding for non-blues/non-epics is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically confirming soul-binding for non-blues/non-epics is now disabled.  AutoGear will still try to equip non-blue/non-epic binding gear, but you will have to confirm soul-binding manually."
+				["label"] = L["Automatically confirm soul-binding for non-blues/non-epics"],
+				["description"] = L["Automatically confirm soul-binding when equipping an upgrade that does not have blue or epic rarity, causing it to become soulbound.  If this is disabled, AutoGear will still try to equip non-blue/non-epic binding gear, but you will have to confirm soul-binding manually."],
+				["toggleDescriptionTrue"] = L["Automatically confirming soul-binding for non-blues/non-epics is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically confirming soul-binding for non-blues/non-epics is now disabled.  AutoGear will still try to equip non-blue/non-epic binding gear, but you will have to confirm soul-binding manually."]
 			},
 			{
 				["option"] = "AutoConfirmBindingBlues",
@@ -2265,10 +2265,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "blue", "blues", "bindblues", "autobindblues" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically confirm soul-binding for blues",
-				["description"] = "Automatically confirm soul-binding when equipping an upgrade that has blue rarity, causing it to become soulbound.  If this is disabled, AutoGear will still try to equip blue binding gear, but you will have to confirm soul-binding manually.",
-				["toggleDescriptionTrue"] = "Automatically confirming soul-binding for blues is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically confirming soul-binding for blues is now disabled.  AutoGear will still try to equip blue binding gear, but you will have to confirm soul-binding manually."
+				["label"] = L["Automatically confirm soul-binding for blues"],
+				["description"] = L["Automatically confirm soul-binding when equipping an upgrade that has blue rarity, causing it to become soulbound.  If this is disabled, AutoGear will still try to equip blue binding gear, but you will have to confirm soul-binding manually."],
+				["toggleDescriptionTrue"] = L["Automatically confirming soul-binding for blues is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically confirming soul-binding for blues is now disabled.  AutoGear will still try to equip blue binding gear, but you will have to confirm soul-binding manually."]
 			},
 			{
 				["option"] = "AutoConfirmBindingEpics",
@@ -2277,10 +2277,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "epic", "epics", "bindepics", "autobindepics" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically confirm soul-binding for epics",
-				["description"] = "Automatically confirm soul-binding when equipping an upgrade that has epic rarity, causing it to become soulbound.  If this is disabled, AutoGear will still try to equip epic binding gear, but you will have to confirm soul-binding manually.",
-				["toggleDescriptionTrue"] = "Automatically confirming soul-binding for epics is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically confirming soul-binding for epics is now disabled.  AutoGear will still try to equip epic binding gear, but you will have to confirm soul-binding manually."
+				["label"] = L["Automatically confirm soul-binding for epics"],
+				["description"] = L["Automatically confirm soul-binding when equipping an upgrade that has epic rarity, causing it to become soulbound.  If this is disabled, AutoGear will still try to equip epic binding gear, but you will have to confirm soul-binding manually."],
+				["toggleDescriptionTrue"] = L["Automatically confirming soul-binding for epics is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically confirming soul-binding for epics is now disabled.  AutoGear will still try to equip epic binding gear, but you will have to confirm soul-binding manually."]
 			},
 			{
 				["option"] = "AutoAcceptQuests",
@@ -2288,10 +2288,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "quest", "quests" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically accept all quests and complete quests which do not award items",
-				["description"] = "Automatically accept all quests and complete quests which do not award items.  If this is disabled, AutoGear will not accept any quests and will only be able to complete quests which award items.",
-				["toggleDescriptionTrue"] = "Automatically accepting all quests and completing quests which do not award items is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically accepting all quests and completing quests which do not award items is now disabled."
+				["label"] = L["Automatically accept all quests and complete quests which do not award items"],
+				["description"] = L["Automatically accept all quests and complete quests which do not award items.  If this is disabled, AutoGear will not accept any quests and will only be able to complete quests which award items."],
+				["toggleDescriptionTrue"] = L["Automatically accepting all quests and completing quests which do not award items is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically accepting all quests and completing quests which do not award items is now disabled."]
 			},
 			{
 				["option"] = "AutoCompleteItemQuests",
@@ -2299,10 +2299,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "completeitemquests", "questitems", "questloot", "questgear" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically complete quests which award items",
-				["description"] = "Automatically evaluate quest item rewards and choose the best upgrade for your current spec, turning in the quest.  If no upgrade is found, AutoGear will choose the most valuable reward in vendor gold.  If this is disabled, AutoGear can still interact with quests, but will not complete quests which present item rewards to choose, and you can still view the total AutoGear score in item tooltips.",
-				["toggleDescriptionTrue"] = "Automatically completing quests which award items is now enabled.",
-				["toggleDescriptionFalse"] = "Automatically completing quests which award items is now disabled."
+				["label"] = L["Automatically complete quests which award items"],
+				["description"] = L["Automatically evaluate quest item rewards and choose the best upgrade for your current spec, turning in the quest.  If no upgrade is found, AutoGear will choose the most valuable reward in vendor gold.  If this is disabled, AutoGear can still interact with quests, but will not complete quests which present item rewards to choose, and you can still view the total AutoGear score in item tooltips."],
+				["toggleDescriptionTrue"] = L["Automatically completing quests which award items is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically completing quests which award items is now disabled."]
 			},
 			{
 				["option"] = "AutoAcceptPartyInvitations",
@@ -2310,10 +2310,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "party" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically accept party invitations",
-				["description"] = "Automatically accept party invitations from any player.",
-				["toggleDescriptionTrue"] = "Automatic acceptance of party invitations is now enabled.",
-				["toggleDescriptionFalse"] = "Automatic acceptance of party invitations is now disabled."
+				["label"] = L["Automatically accept party invitations"],
+				["description"] = L["Automatically accept party invitations from any player."],
+				["toggleDescriptionTrue"] = L["Automatic acceptance of party invitations is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatic acceptance of party invitations is now disabled."]
 			},
 			{
 				["option"] = "ScoreInTooltips",
@@ -2321,10 +2321,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "score", "tooltip", "tooltips" },
 				["cliTrue"] = { "show", "enable", "on", "start" },
 				["cliFalse"] = { "hide", "disable", "off", "stop" },
-				["label"] = "Show AutoGear score in item tooltips",
-				["description"] = "Show total AutoGear item score from internal AutoGear stat weights in item tooltips.",
-				["toggleDescriptionTrue"] = "Showing score in item tooltips is now enabled.",
-				["toggleDescriptionFalse"] = "Showing score in item tooltips is now disabled."
+				["label"] = L["Show AutoGear score in item tooltips"],
+				["description"] = L["Show total AutoGear item score from internal AutoGear stat weights in item tooltips."],
+				["toggleDescriptionTrue"] = L["Showing score in item tooltips is now enabled."],
+				["toggleDescriptionFalse"] = L["Showing score in item tooltips is now disabled."]
 			},
 			{
 				["option"] = "ReasonsInTooltips",
@@ -2332,10 +2332,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "reason", "reasons" },
 				["cliTrue"] = { "show", "enable", "on", "start" },
 				["cliFalse"] = { "hide", "disable", "off", "stop" },
-				["label"] = "Show won't-equip reasons in item tooltips",
-				["description"] = "Show reasons AutoGear won't automatically equip items in item tooltips, except when the score is lower than the equipped item's score.",
-				["toggleDescriptionTrue"] = "Showing won't-auto-equip reasons in item tooltips is now enabled.",
-				["toggleDescriptionFalse"] = "Showing won't-auto-equip reasons in item tooltips is now disabled."
+				["label"] = L["Show won't-equip reasons in item tooltips"],
+				["description"] = L["Show reasons AutoGear won't automatically equip items in item tooltips, except when the score is lower than the equipped item's score."],
+				["toggleDescriptionTrue"] = L["Showing won't-auto-equip reasons in item tooltips is now enabled."],
+				["toggleDescriptionFalse"] = L["Showing won't-auto-equip reasons in item tooltips is now disabled."]
 			},
 			{
 				["option"] = "AlwaysCompareGear",
@@ -2344,10 +2344,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
 				["cvar"] = "alwaysCompareItems",
-				["label"] = "Always show equipped gear comparison tooltips",
-				["description"] = "Always show equipped gear comparison tooltips when viewing tooltips for gear that's not equipped.  If this is disabled, you can still show gear comparison tooltips while holding the Shift key.",
-				["toggleDescriptionTrue"] = "Always showing gear comparison tooltips when viewing gear tooltips is now enabled.",
-				["toggleDescriptionFalse"] = "Always showing gear comparison tooltips when viewing gear tooltips is now disabled.  You can still show gear comparison tooltips while holding the Shift key."
+				["label"] = L["Always show equipped gear comparison tooltips"],
+				["description"] = L["Always show equipped gear comparison tooltips when viewing tooltips for gear that's not equipped.  If this is disabled, you can still show gear comparison tooltips while holding the Shift key."],
+				["toggleDescriptionTrue"] = L["Always showing gear comparison tooltips when viewing gear tooltips is now enabled."],
+				["toggleDescriptionFalse"] = L["Always showing gear comparison tooltips when viewing gear tooltips is now disabled.  You can still show gear comparison tooltips while holding the Shift key."]
 			},
 			{
 				["option"] = "AlwaysShowScoreComparisons",
@@ -2355,10 +2355,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "scorecomparisons", "scorecomparisonsalways", "alwaysshowscorecomparisons" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Always show score comparisons in tooltips",
-				["description"] = "Always show score comparisons in the item tooltip, even when also showing the comparison tooltip.  If this is enabled, only the score for the current item will be shown in the tooltip.",
-				["toggleDescriptionTrue"] = "Always show score comparisons in gear tooltips is now enabled.",
-				["toggleDescriptionFalse"] = "Always show score comparisons in gear tooltips is now disabled."
+				["label"] = L["Always show score comparisons in tooltips"],
+				["description"] = L["Always show score comparisons in the item tooltip, even when also showing the comparison tooltip.  If this is enabled, only the score for the current item will be shown in the tooltip."],
+				["toggleDescriptionTrue"] = L["Always show score comparisons in gear tooltips is now enabled."],
+				["toggleDescriptionFalse"] = L["Always show score comparisons in gear tooltips is now disabled."]
 			},
 			{
 				["option"] = "AutoSellGreys",
@@ -2366,10 +2366,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "sell", "sellgreys", "greys" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically sell greys ("..RED_FONT_COLOR_CODE.."warning"..FONT_COLOR_CODE_CLOSE..": not feature-complete; use Leatrix Plus instead)",
-				["description"] = "Automatically sell all grey items when interacting with a vendor.\n\n"..RED_FONT_COLOR_CODE.."Warning"..FONT_COLOR_CODE_CLOSE..": This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended."..FONT_COLOR_CODE_CLOSE,
-				["toggleDescriptionTrue"] = "Automatic selling of grey items is now enabled. ("..RED_FONT_COLOR_CODE.."warning"..FONT_COLOR_CODE_CLOSE..": This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended.)",
-				["toggleDescriptionFalse"] = "Automatic selling of grey items is now disabled."
+				["label"] = L["Automatically sell greys (%swarning%s: not feature-complete; use Leatrix Plus instead)"]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
+				["description"] = L["Automatically sell all grey items when interacting with a vendor.\n\n%sWarning%s: This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended."]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
+				["toggleDescriptionTrue"] = L["Automatic selling of grey items is now enabled. (%swarning%s: This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended.)"]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
+				["toggleDescriptionFalse"] = L["Automatic selling of grey items is now disabled."]
 			},
 			{
 				["option"] = "AutoRepair",
@@ -2377,10 +2377,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "repair" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Automatically repair",
-				["description"] = "Automatically repair all gear when interacting with a repair-enabled vendor.  If you have a guild bank and guild bank repair funds, this will use guild bank repair funds first.",
-				["toggleDescriptionTrue"] = "Automatic repairing is now enabled.",
-				["toggleDescriptionFalse"] = "Automatic repairing is now disabled."
+				["label"] = L["Automatically repair"],
+				["description"] = L["Automatically repair all gear when interacting with a repair-enabled vendor.  If you have a guild bank and guild bank repair funds, this will use guild bank repair funds first."],
+				["toggleDescriptionTrue"] = L["Automatic repairing is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatic repairing is now disabled."]
 			},
 			{
 				["option"] = "Override",
@@ -2388,10 +2388,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "override" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Override specialization",
-				["description"] = "Override specialization with the specialization chosen in this dropdown.  If this is enabled, AutoGear will evaluate gear by multiplying stats by the stat weights for the chosen specialization instead of the spec detected automatically.",
-				["toggleDescriptionTrue"] = "Specialization overriding is now enabled.  AutoGear will use the specialization selected in the dropdown for evaluating gear.",
-				["toggleDescriptionFalse"] = "Specialization overriding is now disabled.  AutoGear will use your class and its detected specialization for evaluating gear.  Type \"/ag spec\" to check what specialization AutoGear detects for your character.",
+				["label"] = L["Override specialization"],
+				["description"] = L["Override specialization with the specialization chosen in this dropdown.  If this is enabled, AutoGear will evaluate gear by multiplying stats by the stat weights for the chosen specialization instead of the spec detected automatically."],
+				["toggleDescriptionTrue"] = L["Specialization overriding is now enabled.  AutoGear will use the specialization selected in the dropdown for evaluating gear."],
+				["toggleDescriptionFalse"] = L["Specialization overriding is now disabled.  AutoGear will use your class and its detected specialization for evaluating gear.  Type \"/ag spec\" to check what specialization AutoGear detects for your character."],
 				["togglePostHook"] = function() AutoGearUpdateBestItems() end,
 				["child"] = {
 					["option"] = "OverrideSpec",
@@ -2407,10 +2407,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "pawn", "usepawn" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Use Pawn to evaluate upgrades",
-				["description"] = "If Pawn (gear evaluation addon) is installed and configured, use a Pawn scale instead of AutoGear's internal stat weights for evaluating gear upgrades.  AutoGear will use the Pawn scale with a name matching the \"[class]: [spec]\" format; example \"Paladin: Retribution\". If \"Override specialization\" is also enabled, that class and spec will be used for detecting which Pawn scale name to use instead. Visible scales (not hidden in Pawn's settings) will be prioritized when detecting which scale to use."..(((PawnIsReady ~= nil) and PawnIsReady()) and "" or "\n\n"..RED_FONT_COLOR_CODE.."Pawn is not running, so this option will do nothing."..FONT_COLOR_CODE_CLOSE),
-				["toggleDescriptionTrue"] = "Using Pawn for evaluating gear upgrades is now enabled.",
-				["toggleDescriptionFalse"] = "Using Pawn for evaluating gear upgrades is now disabled.",
+				["label"] = L["Use Pawn to evaluate upgrades"],
+				["description"] = L["If Pawn (gear evaluation addon) is installed and configured, use a Pawn scale instead of AutoGear's internal stat weights for evaluating gear upgrades.  AutoGear will use the Pawn scale with a name matching the \"[class]: [spec]\" format; example \"Paladin: Retribution\". If \"Override specialization\" is also enabled, that class and spec will be used for detecting which Pawn scale name to use instead. Visible scales (not hidden in Pawn's settings) will be prioritized when detecting which scale to use."]..(((PawnIsReady ~= nil) and PawnIsReady()) and "" or "\n\n"..RED_FONT_COLOR_CODE..L["Pawn is not running, so this option will do nothing."]..FONT_COLOR_CODE_CLOSE),
+				["toggleDescriptionTrue"] = L["Using Pawn for evaluating gear upgrades is now enabled."],
+				["toggleDescriptionFalse"] = L["Using Pawn for evaluating gear upgrades is now disabled."],
 				["togglePostHook"] = function() AutoGearUpdateBestItems() end
 			},
 			{
@@ -2420,10 +2420,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "scale", "overridepawn", "overridepawnscale" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Override Pawn scale",
-				["description"] = "Override the Pawn scale that would normally be automatically detected in \"[class]: [spec]\" format with the Pawn scale chosen in this dropdown.\n\nThis override does nothing unless \"Use Pawn to evaluate upgrades\" is enabled.",
-				["toggleDescriptionTrue"] = "Overriding Pawn scale with the selected scale is now enabled.",
-				["toggleDescriptionFalse"] = "Overriding Pawn scale with the selected scale is now disabled.",
+				["label"] = L["Override Pawn scale"],
+				["description"] = L["Override the Pawn scale that would normally be automatically detected in \"[class]: [spec]\" format with the Pawn scale chosen in this dropdown.\n\nThis override does nothing unless \"Use Pawn to evaluate upgrades\" is enabled."],
+				["toggleDescriptionTrue"] = L["Overriding Pawn scale with the selected scale is now enabled."],
+				["toggleDescriptionFalse"] = L["Overriding Pawn scale with the selected scale is now disabled."],
 				["togglePostHook"] = function() AutoGearUpdateBestItems() end,
 				["child"] = {
 					["option"] = "PawnScale",
@@ -2448,10 +2448,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "lock", "lockslots", "lockgearslots" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Lock specified gear slots",
-				["description"] = "Lock the specified gear slots, so AutoGear will not remove or equip items in those slots.  If this is enabled and any slots are locked, AutoGear will still evaluate scores for items in all slots, but will not remove or equip items in the locked slots.",
-				["toggleDescriptionTrue"] = "Locking specified gear slots is now enabled.",
-				["toggleDescriptionFalse"] = "Locking specified gear slots is now disabled.",
+				["label"] = L["Lock specified gear slots"],
+				["description"] = L["Lock the specified gear slots, so AutoGear will not remove or equip items in those slots.  If this is enabled and any slots are locked, AutoGear will still evaluate scores for items in all slots, but will not remove or equip items in the locked slots."],
+				["toggleDescriptionTrue"] = L["Locking specified gear slots is now enabled."],
+				["toggleDescriptionFalse"] = L["Locking specified gear slots is now disabled."],
 				["togglePostHook"] = function() AutoGearUpdateBestItems() end,
 				["child"] = {
 					["option"] = "LockedGearSlots",
@@ -2466,10 +2466,10 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "debuginfo", "debuginfointooltips", "test", "testmode", "rolltestmode" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = "Show debug info in item tooltips ("..RED_FONT_COLOR_CODE.."warning"..FONT_COLOR_CODE_CLOSE..": laggy!)",
-				["description"] = "This is a test mode to show debug info in tooltips, such as the real roll outcome if the item viewed dropped as a loot roll.  This is to help the developers find and fix bugs in AutoGear.  You can use it to help too and report issues.\n\n"..RED_FONT_COLOR_CODE.."Warning"..FONT_COLOR_CODE_CLOSE..": laggy!",
-				["toggleDescriptionTrue"] = "Debug info in tooltips is now enabled. Info such as whether AutoGear would \""..GREEN_FONT_COLOR_CODE.."NEED"..FONT_COLOR_CODE_CLOSE.."\" or \""..RED_FONT_COLOR_CODE.."GREED"..FONT_COLOR_CODE_CLOSE.."\" on an item will be shown in item tooltips.  ("..RED_FONT_COLOR_CODE.."warning"..FONT_COLOR_CODE_CLOSE..": laggy!)",
-				["toggleDescriptionFalse"] = "Debug info in tooltips is now disabled."
+				["label"] = L["Show debug info in item tooltips (%swarning%s: laggy!)"]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
+				["description"] = L["This is a test mode to show debug info in tooltips, such as the real roll outcome if the item viewed dropped as a loot roll.  This is to help the developers find and fix bugs in AutoGear.  You can use it to help too and report issues.\n\n%sWarning%s: laggy!"]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
+				["toggleDescriptionTrue"] = L["Debug info in tooltips is now enabled. Info such as whether AutoGear would \"%sNEED%s\" or \"%sGREED%s\" on an item will be shown in item tooltips.  (%swarning%s: laggy!)"]:format(GREEN_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE, RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE, RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
+				["toggleDescriptionFalse"] = L["Debug info in tooltips is now disabled."]
 			}
 		}
 
