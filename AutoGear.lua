@@ -2026,7 +2026,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			AutoLootRoll = true,
 			AutoRollOnBoEBlues = false,
 			AutoRollOnEpics = false,
-			RollOnNonGearLoot = true,
+			RollOnNonGearLoot = not IS_WOW_FOREVER, --off on WoW Forever: leave non-gear loot rolls to the player
 			NeverAutoNeed = false,
 			AutoConfirmBinding = true,
 			AutoConfirmBindingBlues = false,
@@ -2042,7 +2042,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			AutoRepair = false,
 			Override = false,
 			OverrideSpec = AutoGearGetDefaultOverrideSpec(),
-			UsePawn = true, --AutoGear built-in weights are deprecated.  We're using Pawn mainly now, so default true.
+			UsePawn = not IS_WOW_FOREVER, --AutoGear built-in weights are deprecated.  We're using Pawn mainly now, so default true.  Pawn has no WoW Forever scales yet, so Forever uses the built-in class profiles.
 			OverridePawnScale = false,
 			PawnScale = "",
 			DebugInfoInTooltips = false,
