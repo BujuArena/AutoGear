@@ -286,7 +286,14 @@ end
 
 -- Specializations appeared only in Mists Of Pandaria. We also have make changes to Cataclysm with preferred talent tree
 -- later
-if TOC_VERSION_CURRENT < TOC_VERSION_MOP then
+if IS_WOW_FOREVER then
+	function AutoGearDetectSpec()
+		-- WoW Forever has one specialization per class; builds live in C_Traits, so there is no
+		-- reliable spec to detect. Use the general class profile; role-specific profiles are
+		-- available through the "Override specialization" option.
+		return "None"
+	end
+elseif TOC_VERSION_CURRENT < TOC_VERSION_MOP then
 	function AutoGearDetectSpec()
 		-- GetSpecialization() doesn't exist until MoP
 		-- Instead, this finds the talent tree where the most points are allocated.
@@ -2393,6 +2400,9 @@ SlashCmdList["AutoGear"] = function(msg)
 			pawnScaleName, pawnScaleLocalizedName = AutoGearGetPawnScaleName()
 		end
 		AutoGearPrint("AutoGear: Looks like you are a"..(realSpec:find("^[AEIOUaeiou]") and "n " or " ")..RAID_CLASS_COLORS[realClass]:WrapTextInColorCode(realSpec.." "..localizedRealClass).."."..((usingPawn or (AutoGearDB.Override and ((realClassID ~= overrideClassID) or (realSpec ~= overrideSpec)))) and ("  However, AutoGear is using "..(usingPawn and ("Pawn scale \""..PawnGetScaleColor(pawnScaleName)..(pawnScaleLocalizedName or pawnScaleName)..FONT_COLOR_CODE_CLOSE.."\"") or (RAID_CLASS_COLORS[overrideClass]:WrapTextInColorCode(overrideSpec.." "..localizedOverrideClass).." weights")).." for gear evaluation due to the \""..(usingPawn and "Use Pawn to evaluate upgrades" or "Override specialization").."\" option.") or "").."  AutoGear is using weapons value \""..weapons.."\" from \""..((AutoGearDB.Override and ((realClassID ~= overrideClassID) or (realSpec ~= overrideSpec))) and (RAID_CLASS_COLORS[overrideClass]:WrapTextInColorCode(overrideSpec.." "..localizedOverrideClass)) or (RAID_CLASS_COLORS[realClass]:WrapTextInColorCode(realSpec.." "..localizedRealClass))).."\" to determine which weapons are valid.  CanDualWield() returns \""..(CanDualWield() and "true" or "false").."\".", 0) 
+		if IS_WOW_FOREVER and (not AutoGearDB.Override) then
+			AutoGearPrint("AutoGear: WoW Forever has one specialization per class, so AutoGear uses the general class profile.  Enable \"Override specialization\" in \"/ag\" to use a healer, tank, or focused damage profile.", 0)
+		end
 	elseif (param1 == "verbosity") or (param1 == "allowedverbosity") then
 		AutoGearSetAllowedVerbosity(param2)
 	elseif ((param1 == "setspec") or
