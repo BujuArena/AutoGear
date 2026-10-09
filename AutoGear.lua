@@ -2130,7 +2130,8 @@ optionsMenu:SetHeight(1) -- must be set to at least 1 or the menu is invisible i
 local optionsMenuParent = CreateFrame("ScrollFrame", "AutoGearOptionsMenuScrollFrame", nil, "UIPanelScrollFrameTemplate")
 optionsMenuParent.name = "AutoGear"
 optionsMenuParent:SetScrollChild(optionsMenu)
-InterfaceOptions_AddCategory(optionsMenuParent)
+--the Settings shim above returns the registered category; native InterfaceOptions_AddCategory returns nothing
+local optionsCategory = InterfaceOptions_AddCategory(optionsMenuParent)
 if InterfaceAddOnsList_Update then InterfaceAddOnsList_Update() end
 
 --handle PLAYER_ENTERING_WORLD events for initialization
@@ -2603,13 +2604,18 @@ SlashCmdList["AutoGear"] = function(msg)
 			AutoGearPrint("AutoGear: Pawn is not installed.",0)
 		end
 	elseif (param1 == "") then
-		if Settings and Settings.OpenToCategory then
-			local categoryID
-			local categoryName = C_AddOns.GetAddOnMetadata("AutoGear", "Title")
-			for _, category in next, SettingsPanel:GetAllCategories() do
-				if category.name == categoryName then
-					assert(not categoryID, 'found multiple instances of the same category')
-					categoryID = category:GetID()
+		if InCombatLockdown() then
+			--opening the settings panel is a restricted action in combat on modern clients
+			AutoGearPrint("AutoGear: The options menu can't be opened in combat.  Type \"/ag\" again after combat.", 0)
+		elseif Settings and Settings.OpenToCategory then
+			local categoryID = optionsCategory and optionsCategory.GetID and optionsCategory:GetID()
+			if not categoryID then
+				--category registered natively: find it by the name it was registered with
+				for _, category in next, SettingsPanel:GetAllCategories() do
+					if category.name == optionsMenuParent.name then
+						assert(not categoryID, 'found multiple instances of the same category')
+						categoryID = category:GetID()
+					end
 				end
 			end
 			Settings.OpenToCategory(categoryID)
