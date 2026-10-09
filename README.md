@@ -12,6 +12,15 @@ The default stat weights may not be what you prefer. If you want to change them,
 
 If you receive an upgrade mid-combat, AutoGear queues the upgrade to be equipped when combat ends. It used to equip weapon upgrades immediately because weapons could be changed in combat, but due to addons that automated weapon swaps in combat for DPS at maximum level, Blizzard now prevents addons from swapping weapons in combat automatically. You can still equip them manually earlier than AutoGear can if you notice you've received a weapon upgrade.
 
+## WoW Forever
+
+AutoGear also runs on WoW Forever (interface 16001), which loads `AutoGear_Camelot.toc`.
+
+- Forever has one specialization per class, so AutoGear uses the general class profile (`None`). If you heal, tank, or want a more focused damage profile, enable **Override specialization** in `/ag` and choose the closest profile. Healers should do this, because the general profile values bonus healing only as spell damage (one third of its value).
+- Forever's combined hit and critical strike, expertise, and armor/spell penetration are read from item tooltips.
+- On Forever, **Use Pawn** and **Roll on non-gear loot** default to off; Pawn has no Forever scales yet.
+- Loot messages and tooltip text can be restricted (secret values) in dungeons and during encounters. AutoGear then scans your bags instead of reading the loot message, and treats items it can't read as not evaluable.
+
 Chat commands:
 ```
 /ag - options menu
