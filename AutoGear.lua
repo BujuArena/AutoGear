@@ -1759,8 +1759,12 @@ function AutoGearSetStatWeights()
 		end
 		return
 	end
-	if (TOC_VERSION_CURRENT >= TOC_VERSION_WOTLK) and (not (AutoGearDB.UsePawn and PawnIsReady and PawnIsReady())) then
+	if (IS_WOW_FOREVER or TOC_VERSION_CURRENT >= TOC_VERSION_WOTLK) and (not (AutoGearDB.UsePawn and PawnIsReady and PawnIsReady())) then
 		AutoGearCurrentWeighting.Crit = math.max(AutoGearCurrentWeighting.Crit or 0, AutoGearCurrentWeighting.SpellCrit or 0)
+		if IS_WOW_FOREVER then
+			-- WoW Forever combines melee, ranged and spell hit on gear
+			AutoGearCurrentWeighting.Hit = math.max(AutoGearCurrentWeighting.Hit or 0, AutoGearCurrentWeighting.SpellHit or 0)
+		end
 	end
 end
 
@@ -3775,8 +3779,14 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 				(string.find(text, "nature spell damage") or string.find(text, "damage done by nature spells and effects")) and (spec=="Balance" or class=="DRUID" and spec=="None") or
 				(string.find(text, "healing") and isHealer) or
 				(string.find(text, "increases healing done") and isHealer)) then info.SpellPower = (info.SpellPower or 0) + value
+			elseif IS_WOW_FOREVER and string.find(text, "healing") then
+				-- on WoW Forever, bonus healing also grants spell damage at one third of its value
+				info.SpellPower = (info.SpellPower or 0) + (value / 3)
 			end
-			if TOC_VERSION_CURRENT < TOC_VERSION_WOTLK then
+			if IS_WOW_FOREVER then
+				-- WoW Forever combines melee, ranged and spell critical strike on gear
+				if string.find(text, "critical strike") then info.Crit = (info.Crit or 0) + value end
+			elseif TOC_VERSION_CURRENT < TOC_VERSION_WOTLK then
 				if string.find(text, "critical strike with spells by") or string.find(text, "spell critical strike") or string.find(text, "spell critical rating") then info.SpellCrit = (info.SpellCrit or 0) + value end
 				if string.find(text, "critical strike by") then info.Crit = (info.Crit or 0) + value end
 				if string.find(text, "hit with spells by") or string.find(text, "spell hit rating by") then info.SpellHit = (info.SpellHit or 0) + value end
@@ -3785,7 +3795,15 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 				if string.find(text, "critical strike") then info.Crit = (info.Crit or 0) + value end
 			end
 			if TOC_VERSION_CURRENT < TOC_VERSION_WOD then
-				if string.find(text, "hit by") or string.find(text, "improves hit rating by") or string.find(text, "your hit rating by") then info.Hit = (info.Hit or 0) + value end
+				if string.find(text, "hit by") or string.find(text, "improves hit rating by") or string.find(text, "your hit rating by")
+				or (IS_WOW_FOREVER and string.find(text, "hit rating")) then
+					info.Hit = (info.Hit or 0) + value
+				end
+			end
+			if IS_WOW_FOREVER then
+				if string.find(text, "expertise") then info.Expertise = (info.Expertise or 0) + value end
+				if string.find(text, "armor penetration") then info.ArmorPenetration = (info.ArmorPenetration or 0) + value end
+				if string.find(text, "spell penetration") then info.SpellPenetration = (info.SpellPenetration or 0) + value end
 			end
 			if string.find(text, "haste") then info.Haste = (info.Haste or 0) + value end
 			if string.find(text, "mana per 5") or string.find(text, "mana every 5") then info.Mp5 = (info.Mp5 or 0) + value end
@@ -4332,6 +4350,7 @@ function AutoGearDetermineItemScore(info)
 		(AutoGearCurrentWeighting.SpellCrit or 0) * (info.SpellCrit or 0) +
 		(AutoGearCurrentWeighting.Hit or 0) * (info.Hit or 0) +
 		(AutoGearCurrentWeighting.SpellHit or 0) * (info.SpellHit or 0) +
+		(AutoGearCurrentWeighting.Expertise or 0) * (info.Expertise or 0) +
 		(AutoGearCurrentWeighting.RedSockets or 0) * (info.RedSockets or 0) +
 		(AutoGearCurrentWeighting.YellowSockets or 0) * (info.YellowSockets or 0) +
 		(AutoGearCurrentWeighting.BlueSockets or 0) * (info.BlueSockets or 0) +
