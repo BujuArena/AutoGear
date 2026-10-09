@@ -1801,12 +1801,123 @@ local function newCheckbox(dbname, label, description, onClick, optionsMenu)
 	return check
 end
 
+--options window layout in pixels
+local OPTIONS_TABS_TOP_OFFSET = -40 --below the "AutoGear" title
+local OPTIONS_TAB_HEIGHT = 32 --height of PanelTopTabButtonTemplate
+local OPTIONS_CONTAINER_LEFT_OFFSET = 8
+local OPTIONS_CONTAINER_RIGHT_MARGIN = 30 --room for the scroll bar
+local OPTIONS_CONTAINER_BOTTOM_MARGIN = 16
+local OPTIONS_PAGE_PADDING = 12
+local OPTIONS_ROW_SPACING = 2
+local OPTIONS_SECTION_SPACING = 12
+local OPTIONS_SECTION_HEADER_HEIGHT = 20
+local OPTIONS_BUTTON_SPACING = 10
+
+---Creates the tabbed container of the options menu.  Each tab owns a page; rows are stacked
+---vertically on their page and only the selected page is shown.
+---@param optionsMenu table the scroll child of the options scroll frame
+---@return table optionsTabs with GetPage(label), AddSectionHeader(page, label), AddRow(page, row, spacing, offsetX) and Finish()
+local function newOptionsTabs(optionsMenu)
+	local optionsTabs = { pages = {}, pagesByLabel = {} }
+	local scrollFrame = optionsMenu:GetParent()
+
+	--bordered container below the tab buttons; it is named because PanelTemplates finds the tabs of
+	--clients without the "Tabs" parentArray (e.g. Classic Era) by the name "<container>Tab<index>"
+	local container = CreateFrame("Frame", "AutoGearOptionsTabContainer", optionsMenu, "BackdropTemplate")
+	container:SetBackdrop({
+		bgFile = "Interface/ChatFrame/ChatFrameBackground",
+		edgeFile = "Interface/Tooltips/UI-Tooltip-Border",
+		tile = true, tileSize = 16, edgeSize = 14,
+		insets = { left = 4, right = 4, top = 4, bottom = 4 },
+	})
+	container:SetBackdropColor(0.1, 0.1, 0.1, 0.3)
+	container:SetBackdropBorderColor(0.5, 0.5, 0.5)
+	container:SetPoint("TOPLEFT", optionsMenu, "TOPLEFT", OPTIONS_CONTAINER_LEFT_OFFSET, OPTIONS_TABS_TOP_OFFSET - OPTIONS_TAB_HEIGHT)
+
+	--shows the page of the given tab index and resizes the container and scroll child to fit it
+	local function selectTab(tabIndex)
+		PanelTemplates_SetTab(container, tabIndex)
+		for pageIndex, page in ipairs(optionsTabs.pages) do
+			page:SetShown(pageIndex == tabIndex)
+		end
+		local pageHeight = optionsTabs.pages[tabIndex].height + OPTIONS_PAGE_PADDING
+		container:SetHeight(pageHeight)
+		optionsMenu:SetHeight(-OPTIONS_TABS_TOP_OFFSET + OPTIONS_TAB_HEIGHT + pageHeight + OPTIONS_CONTAINER_BOTTOM_MARGIN)
+		scrollFrame:SetVerticalScroll(0)
+	end
+
+	---Returns the page for a tab label, creating the page and its tab button on first use.
+	function optionsTabs:GetPage(label)
+		if self.pagesByLabel[label] then return self.pagesByLabel[label] end
+		local tabIndex = #self.pages + 1
+		local page = CreateFrame("Frame", nil, container)
+		page:SetAllPoints(container)
+		page:Hide()
+		page.height = OPTIONS_PAGE_PADDING
+		local tab = CreateFrame("Button", container:GetName().."Tab"..tabIndex, container, "PanelTopTabButtonTemplate")
+		tab:SetID(tabIndex)
+		tab:SetText(label)
+		tab:SetScript("OnClick", function(clickedTab)
+			PlaySound(SOUNDKIT.IG_CHARACTER_INFO_TAB)
+			selectTab(clickedTab:GetID())
+		end)
+		if tabIndex == 1 then
+			tab:SetPoint("BOTTOMLEFT", container, "TOPLEFT", 6, -2)
+		end
+		self.pages[tabIndex] = page
+		self.pagesByLabel[label] = page
+		return page
+	end
+
+	---Adds a row (checkbox, button, header) below the previous row of the page.
+	function optionsTabs:AddRow(page, row, spacing, offsetX)
+		spacing = page.lastRow and (spacing or OPTIONS_ROW_SPACING) or 0
+		offsetX = offsetX or 0
+		row:SetParent(page)
+		row:ClearAllPoints()
+		if page.lastRow then
+			row:SetPoint("TOPLEFT", page.lastRow, "BOTTOMLEFT", offsetX, -spacing)
+		else
+			row:SetPoint("TOPLEFT", page, "TOPLEFT", OPTIONS_PAGE_PADDING + offsetX, -OPTIONS_PAGE_PADDING)
+		end
+		page.height = page.height + spacing + row:GetHeight()
+		page.lastRow = row
+	end
+
+	---Adds a section header row to the page and remembers it as the page's current section.
+	function optionsTabs:AddSectionHeader(page, label)
+		local header = CreateFrame("Frame", nil, page)
+		header:SetSize(300, OPTIONS_SECTION_HEADER_HEIGHT)
+		local headerText = header:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+		headerText:SetPoint("BOTTOMLEFT", 4, 2)
+		headerText:SetText(label)
+		self:AddRow(page, header, OPTIONS_SECTION_SPACING)
+		page.section = label
+	end
+
+	---Anchors the tab buttons, sizes the container to the scroll frame and shows the first tab.
+	function optionsTabs:Finish()
+		PanelTemplates_SetNumTabs(container, #self.pages)
+		local function updateWidth()
+			local width = math.max(scrollFrame:GetWidth() - OPTIONS_CONTAINER_RIGHT_MARGIN, 1)
+			container:SetWidth(width)
+			optionsMenu:SetWidth(width + OPTIONS_CONTAINER_LEFT_OFFSET)
+		end
+		scrollFrame:HookScript("OnSizeChanged", updateWidth)
+		updateWidth()
+		selectTab(1)
+	end
+
+	return optionsTabs
+end
+
 local function optionsSetup(optionsMenu)
 	local i = 0
 	local frame = {}
 	frame[i] = optionsMenu:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 	frame[i]:SetPoint("TOPLEFT", 8, -8)
 	frame[i]:SetText("AutoGear")
+	local optionsTabs = newOptionsTabs(optionsMenu)
 
 	--loop through options table to build our options menu programmatically
 	for _, v in ipairs(AutoGearOptions) do (function()
@@ -1847,8 +1958,13 @@ local function optionsSetup(optionsMenu)
 		local description = v["description"]..(v["cvar"] and "\n\nThis is a shortcut for the \""..v["cvar"].."\" CVar provided by Blizzard.  Toggling this will toggle that CVar." or "")
 
 		--make a checkbox for this option
-		frame[i] = newCheckbox(v["option"], v["label"], description, _G["AutoGearSimpleToggle"..v["option"]], optionsMenu)
-		frame[i]:SetPoint("TOPLEFT", frame[i-1], "BOTTOMLEFT", 0, 0) --attach to previous element
+		--put it on the page of its tab (options without a tab go to "Other"), starting a new section if needed
+		local page = optionsTabs:GetPage(v["tab"] or L["Other"])
+		if v["section"] and (v["section"] ~= page.section) then
+			optionsTabs:AddSectionHeader(page, v["section"])
+		end
+		frame[i] = newCheckbox(v["option"], v["label"], description, _G["AutoGearSimpleToggle"..v["option"]], page)
+		optionsTabs:AddRow(page, frame[i])
 		frame[i]:SetHitRectInsets(0, -280, 0, 0) --change click region to not be super wide
 		frame[i]:SetChecked(AutoGearDB[v["option"]]) --set initial checked state based on db
 
@@ -1858,7 +1974,7 @@ local function optionsSetup(optionsMenu)
 			--if the child is a dropdown, build it that way
 			if v["child"]["options"] then
 
-				frame[i].dropDown = CreateFrame("FRAME", "AutoGear"..v["child"]["option"].."Dropdown", optionsMenu, "UIDropDownMenuTemplate")
+				frame[i].dropDown = CreateFrame("FRAME", "AutoGear"..v["child"]["option"].."Dropdown", page, "UIDropDownMenuTemplate")
 				--newDropdown(v["child"]["option"], v["child"]["label"], v["child"]["description"], _G["AutoGearSelectFrom"..v["child"]["option"].."Dropdown"], v["child"]["options"], optionsMenu)
 				local width = 250
 				frame[i].dropDown:SetPoint("TOPLEFT", frame[i], "TOPRIGHT", width, 0) --attach to parent
@@ -1990,13 +2106,14 @@ local function optionsSetup(optionsMenu)
 			shouldPrintHelp = false
 		end
 	end)
+	--the scan button goes at the bottom of the first tab
 	i = i + 1
-	frame[i] = CreateFrame("Button", nil, optionsMenu, "UIPanelButtonTemplate")
+	frame[i] = CreateFrame("Button", nil, optionsTabs.pages[1], "UIPanelButtonTemplate")
 	frame[i]:SetWidth(100)
 	frame[i]:SetHeight(30)
 	frame[i]:SetScript("OnClick", function() AutoGearScan() end)
 	frame[i]:SetText("Scan")
-	frame[i]:SetPoint("TOPLEFT", frame[i-1], "BOTTOMLEFT", 0, 0)
+	optionsTabs:AddRow(optionsTabs.pages[1], frame[i], OPTIONS_BUTTON_SPACING, 4)
 	frame[i]:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_NONE")
 		GameTooltip:SetPoint("BOTTOMLEFT", self, "TOPLEFT")
@@ -2004,6 +2121,7 @@ local function optionsSetup(optionsMenu)
 		GameTooltip:Show()
 	end)
 	frame[i]:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	optionsTabs:Finish()
 end
 
 local optionsMenu = CreateFrame("Frame", "AutoGearOptionsMenu")
@@ -2058,6 +2176,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 		AutoGearOptions = {
 			{
 				["option"] = "Enabled",
+				["tab"] = L["Evaluation"],
 				["cliCommands"] = { "toggle", "gear", "equip" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2069,6 +2188,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoLootRoll",
+				["tab"] = L["Loot"],
+				["section"] = L["Rolling"],
 				["cliCommands"] = { "roll", "loot", "rolling" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2079,6 +2200,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoRollOnBoEBlues",
+				["tab"] = L["Loot"],
+				["section"] = L["Rolling"],
 				["cliCommands"] = { "rollboeblues", "rollonboeblues", "lootboeblues" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2089,6 +2212,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoRollOnEpics",
+				["tab"] = L["Loot"],
+				["section"] = L["Rolling"],
 				["cliCommands"] = { "rollepics", "rollonepics", "lootepics" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2099,6 +2224,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "RollOnNonGearLoot",
+				["tab"] = L["Loot"],
+				["section"] = L["Rolling"],
 				["cliCommands"] = { "nongear", "nongearloot", "allloot" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2109,6 +2236,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "NeverAutoNeed",
+				["tab"] = L["Loot"],
+				["section"] = L["Rolling"],
 				["cliCommands"] = { "neverautoneed", "neverneed", "noneed", "onlyautogreed", "onlygreed", "greedonly", "justgreed" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2119,6 +2248,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoConfirmBinding",
+				["tab"] = L["Loot"],
+				["section"] = L["Soul-binding"],
 				["cliCommands"] = { "bind", "boe", "soulbinding" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2129,6 +2260,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoConfirmBindingBlues",
+				["tab"] = L["Loot"],
+				["section"] = L["Soul-binding"],
 				["cliCommands"] = { "blue", "blues", "bindblues", "autobindblues" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2139,6 +2272,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoConfirmBindingEpics",
+				["tab"] = L["Loot"],
+				["section"] = L["Soul-binding"],
 				["cliCommands"] = { "epic", "epics", "bindepics", "autobindepics" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2149,6 +2284,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoAcceptQuests",
+				["tab"] = L["Quests & Party"],
 				["cliCommands"] = { "quest", "quests" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2159,6 +2295,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoCompleteItemQuests",
+				["tab"] = L["Quests & Party"],
 				["cliCommands"] = { "completeitemquests", "questitems", "questloot", "questgear" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2169,6 +2306,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoAcceptPartyInvitations",
+				["tab"] = L["Quests & Party"],
 				["cliCommands"] = { "party" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2179,6 +2317,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "ScoreInTooltips",
+				["tab"] = L["Tooltips"],
 				["cliCommands"] = { "score", "tooltip", "tooltips" },
 				["cliTrue"] = { "show", "enable", "on", "start" },
 				["cliFalse"] = { "hide", "disable", "off", "stop" },
@@ -2189,6 +2328,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "ReasonsInTooltips",
+				["tab"] = L["Tooltips"],
 				["cliCommands"] = { "reason", "reasons" },
 				["cliTrue"] = { "show", "enable", "on", "start" },
 				["cliFalse"] = { "hide", "disable", "off", "stop" },
@@ -2199,6 +2339,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AlwaysCompareGear",
+				["tab"] = L["Tooltips"],
 				["cliCommands"] = { "compare", "alwayscompare", "alwayscomparegear" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2210,6 +2351,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AlwaysShowScoreComparisons",
+				["tab"] = L["Tooltips"],
 				["cliCommands"] = { "scorecomparisons", "scorecomparisonsalways", "alwaysshowscorecomparisons" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2220,6 +2362,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoSellGreys",
+				["tab"] = L["Vendor"],
 				["cliCommands"] = { "sell", "sellgreys", "greys" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2230,6 +2373,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "AutoRepair",
+				["tab"] = L["Vendor"],
 				["cliCommands"] = { "repair" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2240,6 +2384,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "Override",
+				["tab"] = L["Evaluation"],
 				["cliCommands"] = { "override" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2258,6 +2403,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "UsePawn",
+				["tab"] = L["Evaluation"],
 				["cliCommands"] = { "pawn", "usepawn" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2269,6 +2415,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "OverridePawnScale",
+				["tab"] = L["Evaluation"],
 				["shouldUse"] = ((PawnIsReady ~= nil) and PawnIsReady()),
 				["cliCommands"] = { "scale", "overridepawn", "overridepawnscale" },
 				["cliTrue"] = { "enable", "on", "start" },
@@ -2297,6 +2444,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "LockGearSlots",
+				["tab"] = L["Evaluation"],
 				["cliCommands"] = { "lock", "lockslots", "lockgearslots" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2314,6 +2462,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			},
 			{
 				["option"] = "DebugInfoInTooltips",
+				["tab"] = L["Tooltips"],
 				["cliCommands"] = { "debuginfo", "debuginfointooltips", "test", "testmode", "rolltestmode" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
