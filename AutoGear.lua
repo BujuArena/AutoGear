@@ -49,6 +49,12 @@ local TOC_VERSION_SL = 90000
 local TOC_VERSION_DF = 100000
 local TOC_VERSION_TWW = 110000
 
+---WoW Forever runs the modern (Mainline) UI engine and API but reports a 1.x interface number (16001),
+---so TOC_VERSION_CURRENT alone must not be used to decide which API family is present.
+---The TOC range is a fallback in case the project constant is renamed before launch.
+local IS_WOW_FOREVER = (WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT)
+	or (type(TOC_VERSION_CURRENT) == "number" and TOC_VERSION_CURRENT >= 16000 and TOC_VERSION_CURRENT < TOC_VERSION_TBC)
+
 local _ --prevent taint when using throwaway variable
 local next = next -- bind next locally for speed
 --local lastlink
@@ -56,7 +62,9 @@ AutoGearActionQueue = {}
 local weapons
 local tUpdate = 0
 local shouldPrintHelp = false
-local maxPlayerLevel = GetMaxPlayerLevel and GetMaxPlayerLevel() or GetMaxLevelForExpansionLevel(GetExpansionLevel())
+local maxPlayerLevel = (GetMaxPlayerLevel and GetMaxPlayerLevel())
+	or (GetMaxLevelForExpansionLevel and GetExpansionLevel and GetMaxLevelForExpansionLevel(GetExpansionLevel()))
+	or 60
 local L = T.Localization
 local ContainerIDToInventoryID = ContainerIDToInventoryID or (C_Container and C_Container.ContainerIDToInventoryID)
 local GetContainerNumFreeSlots = GetContainerNumFreeSlots or (C_Container and C_Container.GetContainerNumFreeSlots)
@@ -109,7 +117,8 @@ end
 
 --initialize gear slot names table
 AutoGearSlotNames = {}
-for _,v in pairs({PaperDollItemsFrame:GetChildren()}) do
+--PaperDollItemsFrame may not exist yet when this file loads (e.g. on WoW Forever)
+for _,v in pairs(PaperDollItemsFrame and {PaperDollItemsFrame:GetChildren()} or {}) do
 	if v.GetID and v.GetName then
 		local slotID = v:GetID()
 		if slotID >= INVSLOT_FIRST_EQUIPPED and slotID <= INVSLOT_LAST_EQUIPPED then
