@@ -2872,7 +2872,7 @@ AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4
 		if (AutoGearDB.AutoRepair == true) then
 			-- repair all gear
 			local cashString = AutoGearCashToString(GetRepairAllCost())
-			if TOC_VERSION_CURRENT >= TOC_VERSION_TBC then
+			if IS_WOW_FOREVER or TOC_VERSION_CURRENT >= TOC_VERSION_TBC then --WoW Forever has guild banks despite its 1.x interface number
 				if (GetRepairAllCost() > 0) then
 					if (CanGuildBankRepair()) then
 						RepairAllItems(1) --guild repair
