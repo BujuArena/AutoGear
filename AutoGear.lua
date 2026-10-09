@@ -2346,6 +2346,8 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"EQUIP_BIND_CONFIRM")
 		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"EQUIP_BIND_TRADEABLE_CONFIRM") --Fires when the player tries to equip a soulbound item that can still be traded to eligible players
 		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"MERCHANT_SHOW")
+		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"MERCHANT_CLOSED")              --Purchases produce no CHAT_MSG_LOOT, so scan once the merchant closes
+		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"PLAYER_LEVEL_UP")              --Items with a level requirement become usable without any loot event
 		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"PLAYER_EQUIPMENT_CHANGED")     --Fires when equipment is equipped or unequipped from the player, excluding bags
 		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"BAG_CONTAINER_UPDATE")         --Fires when bags are equipped or unequipped from the player
 		pcall(AutoGearFrame.RegisterEvent,AutoGearFrame,"QUEST_ACCEPTED")               --Fires when a new quest is added to the player's quest log (which is what happens after a player accepts a quest).
@@ -2611,6 +2613,9 @@ AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4
 		AutoGearConsiderAllItems()
 	elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "BAG_CONTAINER_UPDATE" then
 		AutoGearQueueLocalUpdate()
+	elseif event == "MERCHANT_CLOSED" or event == "PLAYER_LEVEL_UP" then
+		-- Scan after the merchant closes (not during selling, so bag slots stay stable) and after leveling up.
+		AutoGearQueueScan()
 	elseif event == "START_LOOT_ROLL" then
 		local link = GetLootRollItemLink(arg1)
 		AutoGearHandleLootRoll(link, arg1)
