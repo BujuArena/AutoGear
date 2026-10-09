@@ -2747,6 +2747,7 @@ AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4
 				else
 					AutoGearPrint("AutoGear: Could not choose a quest reward automatically; please choose one manually.", 0)
 				end
+			end
 		end
 	end
 
@@ -2777,6 +2778,12 @@ AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4
 		ConfirmLootRoll(arg1, arg2)
 	elseif event == "CHAT_MSG_LOOT" then --when receiving a new item
 		local message = arg1
+		--loot messages are secret values in dungeons, raids and encounters under the Midnight addon restrictions
+		--(Retail 12, WoW Forever); they can't be matched then, so just scan the bags for the new item
+		if issecretvalue and issecretvalue(message) then
+			AutoGearQueueScan()
+			return
+		end
 		local pattern1 = LOOT_ITEM_SELF_MULTIPLE:gsub("%%s", "(.+)"):gsub("%%d", "(%%d+)"):gsub("^", "^")
 		local pattern2 = LOOT_ITEM_PUSHED_SELF_MULTIPLE:gsub("%%s", "(.+)"):gsub("%%d", "(%%d+)"):gsub("^", "^")
 		local pattern3 = LOOT_ITEM_CREATED_SELF_MULTIPLE:gsub("%%s", "(.+)"):gsub("%%d", "(%%d+)"):gsub("^", "^")
@@ -3847,6 +3854,12 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			if not textLeftText then
 				textLeftText = textLeft:GetText() or ""
 			end
+			--tooltip text can be a secret value under the Midnight addon restrictions (Retail 12, WoW Forever); it can't be parsed then
+			if issecretvalue and issecretvalue(textLeftText) then
+				info.unusable = 1
+				info.reason = "(item data is restricted right now)"
+				return info
+			end
 			local text = select(1,string.gsub(textLeftText:lower(),",",""))
 			if i==1 then
 				info.name = textLeftText
@@ -4029,6 +4042,11 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 				end
 				if not textRightText then
 					textRightText = textRight:GetText()
+				end
+				if issecretvalue and issecretvalue(textRightText) then
+					info.unusable = 1
+					info.reason = "(item data is restricted right now)"
+					return info
 				end
 				if ((g==0 or r/g>3) and (b==0 or r/b>3) and math.abs(b-g)<0.1 and r>0.5 and textRightText) then --this is red text
 					info.reason = "(found red text: \""..textRightText.."\")"
