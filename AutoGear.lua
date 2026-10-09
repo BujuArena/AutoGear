@@ -2989,7 +2989,7 @@ function AutoGearItemContainsText(container, slot, search)
 	AutoGearTooltip:ClearLines()
 	AutoGearTooltip:SetBagItem(container, slot)
 	for i=1, AutoGearTooltip:NumLines() do
-		local mytext = getglobal("AutoGearTooltipTextLeft" .. i)
+		local mytext = _G["AutoGearTooltipTextLeft" .. i]
 		if (mytext) then
 			local text = mytext:GetText()
 			if (text == search) then
@@ -3848,7 +3848,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			textLeft = tooltipData.lines[i].leftText
 			textLeftText = textLeft
 		else
-			textLeft = getglobal("AutoGearTooltipTextLeft"..i)
+			textLeft = _G["AutoGearTooltipTextLeft"..i]
 		end
 		if textLeft then
 			local r, g, b
@@ -4037,7 +4037,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 				textRight = tooltipData.lines[i].rightText or tooltipData.lines[i].textRight
 				textRightText = textRight
 			else
-				textRight = getglobal("AutoGearTooltipTextRight"..i)
+				textRight = _G["AutoGearTooltipTextRight"..i]
 			end
 			if textRight then
 				local r, g, b
@@ -4563,8 +4563,9 @@ function AutoGearDetermineItemScore(info)
 end
 
 function AutoGearIsMountItemAlreadyCollected(itemID)
+	local mountSpellID = select(2,GetItemSpell(itemID))
 	if GetItemCount(itemID, true) > 0 or
-	IsSpellKnown(select(2,GetItemSpell(itemID))) or
+	(mountSpellID and IsPlayerSpell(mountSpellID)) or
 	(C_MountJournal and C_MountJournal.GetMountInfoByID and C_MountJournal.GetMountFromItem and
 	select(11,C_MountJournal.GetMountInfoByID(C_MountJournal.GetMountFromItem(itemID)))) then
 		return true
