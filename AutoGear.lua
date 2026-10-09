@@ -2740,8 +2740,13 @@ AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4
 				end
 			end
 			if not itemLinkMissing then
-				GetQuestReward(AutoGearConsiderAllItems(nil, questRewardIDs))
-			end
+				--only turn in once a reward was actually chosen; GetQuestReward(nil) on a quest with choices is undefined
+				local chosenReward = AutoGearConsiderAllItems(nil, questRewardIDs)
+				if chosenReward then
+					GetQuestReward(chosenReward)
+				else
+					AutoGearPrint("AutoGear: Could not choose a quest reward automatically; please choose one manually.", 0)
+				end
 		end
 	end
 
