@@ -99,7 +99,28 @@
         "SOUNDKIT",
         "ITEM_UNIQUE",
         "ITEM_UNIQUE_EQUIPPABLE",
-        "ITEM_MOD_VERSATILITY"
+        "ITEM_MOD_VERSATILITY",
+        "APIDocumentation",
+        "BattlePetTooltipTemplate_SetBattlePet",
+        "LinkUtil",
+        "BattlePetTooltip",
+        "GameTooltip_AddBlankLineToTooltip",
+        "SharedTooltip_SetBackdropStyle",
+        "GameTooltip_AddColoredDoubleLine",
+        "GameTooltip_AddColoredLine",
+        "GameTooltip_OnTooltipAddMoney",
+        "SetTooltipMoney",
+        "REPAIR_COST",
+        "GameTooltip_UnitColor",
+        "GameTooltip_ShowCompareItem",
+        "GAME_TOOLTIP_BACKDROP_STYLE_AZERITE_ITEM",
+        "GAME_TOOLTIP_BACKDROP_STYLE_CORRUPTED_ITEM",
+        "TooltipComparisonManager",
+        "TooltipUtil",
+        "assertsafe",
+        "WowStyle1DropdownMixin",
+        "PanelTemplates_SetTab",
+        "PanelTemplates_SetNumTabs"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {
@@ -114,6 +135,7 @@
         "utf8": "disable"
     },
     "Lua.workspace.library": [
-        "~/.vscode/extensions/ketho.wow-api-0.22.2/Annotations/Core"
-    ]
+        "~/.vscode/extensions/ketho.wow-api-0.22.3/Annotations/Core"
+    ],
+    "Lua.type.weakUnionCheck": true
 }

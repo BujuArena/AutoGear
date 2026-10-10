@@ -1801,6 +1801,26 @@ local function newCheckbox(dbname, label, description, onClick, optionsMenu)
 	return check
 end
 
+--all modern clients have the modern menu system (Blizzard_Menu); older clients only have UIDropDownMenu, which taints the default UI in Classic without TaintLess
+local useModernDropdowns = (MenuUtil ~= nil) and (WowStyle1DropdownMixin ~= nil)
+
+local function setDropdownText(dropdown, text)
+	if useModernDropdowns then
+		--OverrideText ignores nil, and it stops the menu from replacing the text with its own selection text
+		dropdown:OverrideText(text or "")
+	else
+		UIDropDownMenu_SetText(dropdown, text)
+	end
+end
+
+local function closeDropdownMenu(dropdown)
+	if useModernDropdowns then
+		dropdown:CloseMenu()
+	else
+		CloseDropDownMenus()
+	end
+end
+
 --options window layout in pixels
 local OPTIONS_TABS_TOP_OFFSET = -40 --below the "AutoGear" title
 local OPTIONS_TAB_HEIGHT = 32 --height of PanelTopTabButtonTemplate
@@ -1974,14 +1994,21 @@ local function optionsSetup(optionsMenu)
 			--if the child is a dropdown, build it that way
 			if v["child"]["options"] then
 
-				frame[i].dropDown = CreateFrame("FRAME", "AutoGear"..v["child"]["option"].."Dropdown", page, "UIDropDownMenuTemplate")
-				--newDropdown(v["child"]["option"], v["child"]["label"], v["child"]["description"], _G["AutoGearSelectFrom"..v["child"]["option"].."Dropdown"], v["child"]["options"], optionsMenu)
 				local width = 250
-				frame[i].dropDown:SetPoint("TOPLEFT", frame[i], "TOPRIGHT", width, 0) --attach to parent
-				UIDropDownMenu_SetWidth(frame[i].dropDown, width)
+				if useModernDropdowns then
+					frame[i].dropDown = CreateFrame("DropdownButton", "AutoGear"..v["child"]["option"].."Dropdown", page, "WowStyle1DropdownTemplate")
+					--this template draws its box at its frame edges, while UIDropDownMenuTemplate pads it by about 16 pixels on the left
+					frame[i].dropDown:SetPoint("LEFT", frame[i], "RIGHT", width + 16, 0) --attach to parent
+					frame[i].dropDown:SetWidth(width)
+				else
+					frame[i].dropDown = CreateFrame("FRAME", "AutoGear"..v["child"]["option"].."Dropdown", page, "UIDropDownMenuTemplate")
+					frame[i].dropDown:SetPoint("TOPLEFT", frame[i], "TOPRIGHT", width, 0) --attach to parent
+					UIDropDownMenu_SetWidth(frame[i].dropDown, width)
+				end
+				--newDropdown(v["child"]["option"], v["child"]["label"], v["child"]["description"], _G["AutoGearSelectFrom"..v["child"]["option"].."Dropdown"], v["child"]["options"], optionsMenu)
 				--frame[i].dropDown:SetHitRectInsets(0, -280, 0, 0) --change click region to not be super wide
 				if type(AutoGearDB[v["child"]["option"]]) == 'string' then
-					UIDropDownMenu_SetText(frame[i].dropDown, AutoGearDB[v["child"]["option"]])
+					setDropdownText(frame[i].dropDown, AutoGearDB[v["child"]["option"]])
 				elseif type(AutoGearDB[v["child"]["option"]]) == 'table' then
 					local label
 					for _, l in pairs(v["child"]["options"]) do
@@ -1993,15 +2020,15 @@ local function optionsSetup(optionsMenu)
 							end
 						end
 					end
-					UIDropDownMenu_SetText(_G["AutoGear"..v["child"]["option"].."Dropdown"], label)
+					setDropdownText(_G["AutoGear"..v["child"]["option"].."Dropdown"], label)
 				end
 
 				--function to run when using this dropdown
 				_G["AutoGear"..v["child"]["option"].."Dropdown"].SetValue = function(self, value)
 					if type(AutoGearDB[v["child"]["option"]]) == 'string' then
 						AutoGearDB[v["child"]["option"]] = value
-						UIDropDownMenu_SetText(_G["AutoGear"..v["child"]["option"].."Dropdown"], AutoGearDB[v["child"]["option"]])
-						CloseDropDownMenus()
+						setDropdownText(_G["AutoGear"..v["child"]["option"].."Dropdown"], AutoGearDB[v["child"]["option"]])
+						closeDropdownMenu(_G["AutoGear"..v["child"]["option"].."Dropdown"])
 					end
 				end
 
@@ -2009,25 +2036,31 @@ local function optionsSetup(optionsMenu)
 					hooksecurefunc(_G["AutoGear"..v["child"]["option"].."Dropdown"], "SetValue", v["child"]["dropdownPostHook"])
 				end
 
-				UIDropDownMenu_Initialize(_G["AutoGear"..v["child"]["option"].."Dropdown"], function(self, level, menuList)
-					local info = UIDropDownMenu_CreateInfo()
-					if (level or 1) == 1 then
-						--display the labels
+				if useModernDropdowns then
+					--same menu as the UIDropDownMenu version below, built with the modern menu system
+					frame[i].dropDown:SetupMenu(function(dropdown, rootDescription)
 						if type(AutoGearDB[v["child"]["option"]]) == 'string' then
 							for _, j in ipairs(v["child"]["options"]) do
-								info.text = j["label"]
-								info.checked = (AutoGearDB[v["child"]["option"]] and (string.match(AutoGearDB[v["child"]["option"]], "^"..j["label"]..":") and true or false) or false)
-								info.menuList = j
-								info.hasArrow = (j["subLabels"] and true or false)
-								UIDropDownMenu_AddButton(info)
+								--the label is selected when the stored value is one of its subLabels; it only opens its submenu, so its responder does nothing
+								local labelDescription = rootDescription:CreateRadio(j["label"], function()
+									return (AutoGearDB[v["child"]["option"]] and string.match(AutoGearDB[v["child"]["option"]], "^"..j["label"]..":")) and true or false
+								end, function() end)
+								for _, z in ipairs(j["subLabels"] or {}) do
+									local value = j["label"]..": "..z
+									labelDescription:CreateRadio(z, function()
+										return (AutoGearDB[v["child"]["option"]] == value) or (AutoGearDB[v["child"]["option"]] == z)
+									end, function()
+										dropdown:SetValue(value)
+									end)
+								end
 							end
 						elseif type(AutoGearDB[v["child"]["option"]]) == 'table' then
 							for _, j in pairs(v["child"]["options"]) do
-								info.text = j["label"]
-								info.keepShownOnClick = true
-								info.isNotRadio = true
-								info.checked = j["enabled"]
-								info.func = function(self) j["enabled"] = self.checked
+								--checkboxes keep the menu open, like keepShownOnClick
+								rootDescription:CreateCheckbox(j["label"], function()
+									return j["enabled"] and true or false
+								end, function()
+									j["enabled"] = not j["enabled"]
 									local label
 									for _, l in pairs(v["child"]["options"]) do
 										if l["enabled"] then
@@ -2038,26 +2071,62 @@ local function optionsSetup(optionsMenu)
 											end
 										end
 									end
-									UIDropDownMenu_SetText(_G["AutoGear"..v["child"]["option"].."Dropdown"], label)
+									setDropdownText(dropdown, label)
+								end)
+							end
+						end
+					end)
+				else
+					UIDropDownMenu_Initialize(_G["AutoGear"..v["child"]["option"].."Dropdown"], function(self, level, menuList)
+						local info = UIDropDownMenu_CreateInfo()
+						if (level or 1) == 1 then
+							--display the labels
+							if type(AutoGearDB[v["child"]["option"]]) == 'string' then
+								for _, j in ipairs(v["child"]["options"]) do
+									info.text = j["label"]
+									info.checked = (AutoGearDB[v["child"]["option"]] and (string.match(AutoGearDB[v["child"]["option"]], "^"..j["label"]..":") and true or false) or false)
+									info.menuList = j
+									info.hasArrow = (j["subLabels"] and true or false)
+									UIDropDownMenu_AddButton(info)
 								end
-								info.menuList = j
-								info.hasArrow = (j["subLabels"] and true or false)
-								UIDropDownMenu_AddButton(info)
+							elseif type(AutoGearDB[v["child"]["option"]]) == 'table' then
+								for _, j in pairs(v["child"]["options"]) do
+									info.text = j["label"]
+									info.keepShownOnClick = true
+									info.isNotRadio = true
+									info.checked = j["enabled"]
+									info.func = function(self) j["enabled"] = self.checked
+										local label
+										for _, l in pairs(v["child"]["options"]) do
+											if l["enabled"] then
+												if label then
+													label = label..", "..l["label"]
+												else
+													label = l["label"]
+												end
+											end
+										end
+										UIDropDownMenu_SetText(_G["AutoGear"..v["child"]["option"].."Dropdown"], label)
+									end
+									info.menuList = j
+									info.hasArrow = (j["subLabels"] and true or false)
+									UIDropDownMenu_AddButton(info)
+								end
+							end
+						else
+							--display the subLabels
+							info.func = self.SetValue
+							if menuList["subLabels"] then
+								for _, z in ipairs(menuList["subLabels"]) do
+									info.text = z
+									info.arg1 = menuList["label"]..": "..z
+									info.checked = ((AutoGearDB[v["child"]["option"]] == info.arg1) or (AutoGearDB[v["child"]["option"]] == z))
+									UIDropDownMenu_AddButton(info, level)
+								end
 							end
 						end
-					else
-						--display the subLabels
-						info.func = self.SetValue
-						if menuList["subLabels"] then
-							for _, z in ipairs(menuList["subLabels"]) do
-								info.text = z
-								info.arg1 = menuList["label"]..": "..z
-								info.checked = ((AutoGearDB[v["child"]["option"]] == info.arg1) or (AutoGearDB[v["child"]["option"]] == z))
-								UIDropDownMenu_AddButton(info, level)
-							end
-						end
-					end
-				end)
+					end)
+				end
 			end
 		end
 
@@ -2437,7 +2506,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 							local numMatches
 							AutoGearDB.PawnScale, numMatches = string.gsub(AutoGearDB.PawnScale, "^Visible: ?", "", 1)
 							if numMatches and numMatches == 0 then AutoGearDB.PawnScale = string.gsub(AutoGearDB.PawnScale, "^Hidden: ?", "", 1) end
-							UIDropDownMenu_SetText(AutoGearPawnScaleDropdown, AutoGearDB.PawnScale)
+							setDropdownText(AutoGearPawnScaleDropdown, AutoGearDB.PawnScale)
 						end
 						AutoGearSetStatWeights()
 					end
@@ -2590,7 +2659,7 @@ SlashCmdList["AutoGear"] = function(msg)
 				if PawnDoesScaleExist(truePawnScaleName) then
 					AutoGearDB.PawnScale = userPawnScaleName
 					if AutoGearPawnScaleDropdown then
-						UIDropDownMenu_SetText(AutoGearPawnScaleDropdown, AutoGearDB.PawnScale)
+						setDropdownText(AutoGearPawnScaleDropdown, AutoGearDB.PawnScale)
 					end
 
 					AutoGearPrint("AutoGear: "..(AutoGearDB.UsePawn and "" or "While using Pawn is enabled, ").."AutoGear will now use the \""..PawnGetScaleColor(truePawnScaleName)..(pawnScaleLocalizedName or truePawnScaleName)..FONT_COLOR_CODE_CLOSE.."\" Pawn scale to evaluate gear.",0)
