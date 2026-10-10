@@ -14,7 +14,7 @@ If you receive an upgrade mid-combat, AutoGear queues the upgrade to be equipped
 
 ## WoW Forever
 
-AutoGear also runs on WoW Forever (interface 16001), which loads `AutoGear_Camelot.toc`.
+AutoGear also runs on WoW Forever (interface 16001).
 
 - Forever has one specialization per class, so AutoGear uses the general class profile (`None`). If you heal, tank, or want a more focused damage profile, enable **Override specialization** in `/ag` and choose the closest profile. Healers should do this, because the general profile values bonus healing only as spell damage (one third of its value).
 - Forever's combined hit and critical strike, expertise, and armor/spell penetration are read from item tooltips.
