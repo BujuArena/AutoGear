@@ -9,6 +9,8 @@ if GetLocale() == "deDE" then
 	T.Localization["Quests & Party"] = "Quests & Gruppe"
 	T.Localization["Tooltips"] = "Tooltips"
 	T.Localization["Vendor"] = "Händler"
+	T.Localization["Selling greys"] = "Graue Gegenstände verkaufen"
+	T.Localization["Repairing"] = "Reparieren"
 	T.Localization["Other"] = "Sonstiges"
 
 	-- options window: general texts
@@ -119,10 +121,25 @@ if GetLocale() == "deDE" then
 	T.Localization["Always show score comparisons in gear tooltips is now disabled."] = "Wertungsvergleiche in Ausrüstungs-Tooltips immer anzeigen ist jetzt deaktiviert."
 
 	-- option: AutoSellGreys
-	T.Localization["Automatically sell greys (%swarning%s: not feature-complete; use Leatrix Plus instead)"] = "Graue Gegenstände automatisch verkaufen (%sWarnung%s: unvollständig; besser Leatrix Plus verwenden)"
-	T.Localization["Automatically sell all grey items when interacting with a vendor.\n\n%sWarning%s: This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended."] = "Beim Ansprechen eines Händlers automatisch alle grauen Gegenstände verkaufen.\n\n%sWarnung%s: Diese Funktion ist unvollständig und berücksichtigt weder das Goldlimit noch Händler, die nichts ankaufen, noch graue Gegenstände, die bei Händlern zum Tausch benötigt werden.  Für diese Funktion wird stattdessen Leatrix Plus empfohlen."
-	T.Localization["Automatic selling of grey items is now enabled. (%swarning%s: This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended.)"] = "Automatisches Verkaufen grauer Gegenstände ist jetzt aktiviert. (%sWarnung%s: Diese Funktion ist unvollständig und berücksichtigt weder das Goldlimit noch Händler, die nichts ankaufen, noch graue Gegenstände, die bei Händlern zum Tausch benötigt werden.  Für diese Funktion wird stattdessen Leatrix Plus empfohlen.)"
+	T.Localization["Automatically sell greys"] = "Graue Gegenstände automatisch verkaufen"
+	T.Localization["Automatically sell all grey items when interacting with a vendor.  Hold Shift while opening the vendor to skip selling that time.\n\nAutoGear keeps greys it would equip as upgrades, quest items, greys the current vendor accepts as payment, and greys vendors refuse to buy.  It stops selling when the vendor doesn't buy items or you can't hold more gold."] = "Beim Ansprechen eines Händlers automatisch alle grauen Gegenstände verkaufen.  Halte beim Öffnen des Händlers die Umschalttaste gedrückt, um das Verkaufen dieses Mal auszulassen.\n\nAutoGear behält graue Gegenstände, die es als Verbesserung anlegen würde, Questgegenstände, graue Gegenstände, die der aktuelle Händler als Bezahlung annimmt, und graue Gegenstände, die Händler nicht ankaufen.  Es hört auf zu verkaufen, wenn der Händler nichts ankauft oder du kein weiteres Gold tragen kannst."
+	T.Localization["Automatic selling of grey items is now enabled."] = "Automatisches Verkaufen grauer Gegenstände ist jetzt aktiviert."
 	T.Localization["Automatic selling of grey items is now disabled."] = "Automatisches Verkaufen grauer Gegenstände ist jetzt deaktiviert."
+	T.Localization["Exclusions"] = "Ausnahmen"
+	T.Localization["Item IDs separated by commas.  Greys listed here are kept, and whites listed here are sold along with the greys.\n\nShift-click an item while this box has focus to add it, or look up item IDs in item tooltips while the AutoGear options are open."] = "Gegenstands-IDs, durch Kommas getrennt.  Hier aufgeführte graue Gegenstände werden behalten, hier aufgeführte weiße Gegenstände werden zusammen mit den grauen verkauft.\n\nKlicke mit gedrückter Umschalttaste auf einen Gegenstand, während dieses Feld den Fokus hat, um ihn hinzuzufügen, oder lies Gegenstands-IDs in den Tooltips ab, während die AutoGear-Optionen geöffnet sind."
+	T.Localization["Item ID"] = "Gegenstands-ID"
+
+	-- option: KeepKeeperTahultPetItems
+	T.Localization["Keep greys needed for Keeper Ta'hult's pets"] = "Graue Gegenstände für Hüter Ta'hults Haustiere behalten"
+	T.Localization["Don't sell the grey items that Keeper Ta'hult in Oribos takes as payment for the Baubleworm pets."] = "Die grauen Gegenstände nicht verkaufen, die Hüter Ta'hult in Oribos als Bezahlung für die Glitzerwurm-Haustiere annimmt."
+	T.Localization["Keeping greys needed for Keeper Ta'hult's pets is now enabled."] = "Behalten grauer Gegenstände für Hüter Ta'hults Haustiere ist jetzt aktiviert."
+	T.Localization["Keeping greys needed for Keeper Ta'hult's pets is now disabled."] = "Behalten grauer Gegenstände für Hüter Ta'hults Haustiere ist jetzt deaktiviert."
+
+	-- option: KeepUnboundGreyGear
+	T.Localization["Keep unbound grey gear"] = "Ungebundene graue Ausrüstung behalten"
+	T.Localization["Don't sell grey weapons and armor which aren't soulbound, for example to sell them on the auction house instead."] = "Graue Waffen und Rüstungen, die nicht seelengebunden sind, nicht verkaufen, zum Beispiel um sie stattdessen im Auktionshaus zu verkaufen."
+	T.Localization["Keeping unbound grey gear is now enabled."] = "Behalten ungebundener grauer Ausrüstung ist jetzt aktiviert."
+	T.Localization["Keeping unbound grey gear is now disabled."] = "Behalten ungebundener grauer Ausrüstung ist jetzt deaktiviert."
 
 	-- option: AutoRepair
 	T.Localization["Automatically repair"] = "Automatisch reparieren"

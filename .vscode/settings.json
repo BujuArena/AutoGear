@@ -121,7 +121,13 @@
         "WowStyle1DropdownMixin",
         "PanelTemplates_SetTab",
         "PanelTemplates_SetNumTabs",
-        "ITEM_SET_NAME"
+        "ITEM_SET_NAME",
+        "ChatEdit_InsertLink",
+        "ChatFrameUtil",
+        "NUM_TOTAL_EQUIPPED_BAG_SLOTS",
+        "ERR_VENDOR_DOESNT_BUY",
+        "ERR_TOO_MUCH_GOLD",
+        "MerchantFrame"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {

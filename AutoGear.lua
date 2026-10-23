@@ -61,6 +61,7 @@ local _ --prevent taint when using throwaway variable
 local next = next -- bind next locally for speed
 --local lastlink
 AutoGearActionQueue = {}
+local queueQueueRebuild
 local weapons
 local tUpdate = 0
 local shouldPrintHelp = false
@@ -106,6 +107,7 @@ end
 local InterfaceOptionsFrame_OpenToCategory = InterfaceOptionsFrame_OpenToCategory or Settings.OpenToCategory
 local IsPlayerSpell = C_SpellBook and C_SpellBook.IsSpellKnown or IsPlayerSpell
 local PickupContainerItem = PickupContainerItem or (C_Container and C_Container.PickupContainerItem)
+local UseContainerItem = UseContainerItem or (C_Container and C_Container.UseContainerItem)
 ITEM_UNIQUE_EQUIPPABLE_SANITIZED_PATTERN = select(1,string.gsub(ITEM_UNIQUE_EQUIPPABLE,"%-","%%-"))
 AutoGearWouldRoll = "nil"
 AutoGearSomeItemDataIsMissing = nil
@@ -2129,6 +2131,57 @@ local function optionsSetup(optionsMenu)
 						end
 					end)
 				end
+
+			--if the child is a text box for a list of item IDs, build it that way
+			elseif v["child"]["editBox"] then
+				local width = 250
+				local editBox = CreateFrame("EditBox", "AutoGear"..v["child"]["option"].."EditBox", page, "InputBoxTemplate")
+				frame[i].editBox = editBox
+				--the checkbox's click region reaches 280 pixels to its right, so start past it
+				editBox:SetPoint("LEFT", frame[i], "RIGHT", width + 32, 0)
+				editBox:SetSize(width, 20)
+				editBox:SetAutoFocus(false)
+				local function showSavedText()
+					editBox:SetText(AutoGearDB[v["child"]["option"]])
+					editBox:SetCursorPosition(0)
+				end
+				showSavedText()
+				editBox:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+				editBox:SetScript("OnEscapePressed", function(self)
+					showSavedText()
+					self:ClearFocus()
+				end)
+				editBox:SetScript("OnEditFocusLost", function(self)
+					AutoGearDB[v["child"]["option"]] = table.concat(AutoGearParseItemIDList(self:GetText()), ", ")
+					showSavedText()
+				end)
+				editBox:SetScript("OnEnter", function(self)
+					GameTooltip:SetOwner(self, "ANCHOR_NONE")
+					GameTooltip:SetPoint("BOTTOMLEFT", self, "TOPLEFT")
+					GameTooltip:AddLine(v["child"]["label"], NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+					GameTooltip:AddLine(v["child"]["description"], HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b, true)
+					local itemIDs = AutoGearParseItemIDList(AutoGearDB[v["child"]["option"]])
+					if #itemIDs > 0 then
+						GameTooltip:AddLine(" ")
+						for _, itemID in ipairs(itemIDs) do
+							--the item's link is nil until the client has cached the item
+							GameTooltip:AddDoubleLine((select(2, GetItemInfo(itemID))) or ("item "..itemID), itemID)
+						end
+					end
+					GameTooltip:Show()
+				end)
+				editBox:SetScript("OnLeave", function() GameTooltip:Hide() end)
+				--shift-clicking an item inserts its link into the chat edit box, so do the same for this box while it has focus
+				local function insertItemLink(text)
+					if editBox:HasFocus() and text and string.find(text, "item:%d+") then
+						editBox:Insert(text)
+					end
+				end
+				if ChatFrameUtil and ChatFrameUtil.InsertLink then
+					hooksecurefunc(ChatFrameUtil, "InsertLink", insertItemLink)
+				elseif ChatEdit_InsertLink then
+					hooksecurefunc("ChatEdit_InsertLink", insertItemLink)
+				end
 			end
 		end
 
@@ -2230,6 +2283,9 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			AlwaysCompareGear = GetCVarBool("alwaysCompareItems"),
 			AlwaysShowScoreComparisons = false,
 			AutoSellGreys = false,
+			SellGreysExclusions = "",
+			KeepKeeperTahultPetItems = true,
+			KeepUnboundGreyGear = false,
 			AutoRepair = false,
 			Override = false,
 			OverrideSpec = AutoGearGetDefaultOverrideSpec(),
@@ -2447,17 +2503,43 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			{
 				["option"] = "AutoSellGreys",
 				["tab"] = L["Vendor"],
+				["section"] = L["Selling greys"],
 				["cliCommands"] = { "sell", "sellgreys", "greys" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = L["Automatically sell greys (%swarning%s: not feature-complete; use Leatrix Plus instead)"]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
-				["description"] = L["Automatically sell all grey items when interacting with a vendor.\n\n%sWarning%s: This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended."]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
-				["toggleDescriptionTrue"] = L["Automatic selling of grey items is now enabled. (%swarning%s: This feature is not feature-complete and does not correctly handle having max gold, vendors who can't buy items, and avoiding selling greys that can be used for trading with vendors.  Using Leatrix Plus instead for this feature is recommended.)"]:format(RED_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE),
-				["toggleDescriptionFalse"] = L["Automatic selling of grey items is now disabled."]
+				["label"] = L["Automatically sell greys"],
+				["description"] = L["Automatically sell all grey items when interacting with a vendor.  Hold Shift while opening the vendor to skip selling that time.\n\nAutoGear keeps greys it would equip as upgrades, quest items, greys the current vendor accepts as payment, and greys vendors refuse to buy.  It stops selling when the vendor doesn't buy items or you can't hold more gold."],
+				["toggleDescriptionTrue"] = L["Automatic selling of grey items is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatic selling of grey items is now disabled."],
+				["child"] = {
+					["option"] = "SellGreysExclusions",
+					["editBox"] = true,
+					["label"] = L["Exclusions"],
+					["description"] = L["Item IDs separated by commas.  Greys listed here are kept, and whites listed here are sold along with the greys.\n\nShift-click an item while this box has focus to add it, or look up item IDs in item tooltips while the AutoGear options are open."]
+				}
+			},
+			{
+				["option"] = "KeepKeeperTahultPetItems",
+				["tab"] = L["Vendor"],
+				["section"] = L["Selling greys"],
+				["label"] = L["Keep greys needed for Keeper Ta'hult's pets"],
+				["description"] = L["Don't sell the grey items that Keeper Ta'hult in Oribos takes as payment for the Baubleworm pets."],
+				["toggleDescriptionTrue"] = L["Keeping greys needed for Keeper Ta'hult's pets is now enabled."],
+				["toggleDescriptionFalse"] = L["Keeping greys needed for Keeper Ta'hult's pets is now disabled."]
+			},
+			{
+				["option"] = "KeepUnboundGreyGear",
+				["tab"] = L["Vendor"],
+				["section"] = L["Selling greys"],
+				["label"] = L["Keep unbound grey gear"],
+				["description"] = L["Don't sell grey weapons and armor which aren't soulbound, for example to sell them on the auction house instead."],
+				["toggleDescriptionTrue"] = L["Keeping unbound grey gear is now enabled."],
+				["toggleDescriptionFalse"] = L["Keeping unbound grey gear is now disabled."]
 			},
 			{
 				["option"] = "AutoRepair",
 				["tab"] = L["Vendor"],
+				["section"] = L["Repairing"],
 				["cliCommands"] = { "repair" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
@@ -2873,8 +2955,14 @@ AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4
 	elseif event == "PLAYER_EQUIPMENT_CHANGED" or event == "BAG_CONTAINER_UPDATE" then
 		AutoGearQueueLocalUpdate()
 	elseif event == "MERCHANT_CLOSED" or event == "PLAYER_LEVEL_UP" then
+		if event == "MERCHANT_CLOSED" then
+			AutoGearStopSellingGreys()
+		end
 		-- Scan after the merchant closes (not during selling, so bag slots stay stable) and after leveling up.
 		AutoGearQueueScan()
+	elseif event == "UI_ERROR_MESSAGE" then
+		--in client versions before the original 7.0.3, the message is the only arg; in later mainline clients, and in classic clients since 1.13.2, a message type is the first arg
+		AutoGearHandleSellingError((type(arg1) == "string") and arg1 or arg2)
 	elseif event == "START_LOOT_ROLL" then
 		local link = GetLootRollItemLink(arg1)
 		AutoGearHandleLootRoll(link, arg1)
@@ -2945,27 +3033,7 @@ AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4
 		end
 	elseif event == "MERCHANT_SHOW" then
 		if (AutoGearDB.AutoSellGreys == true) then
-			-- sell all grey items
-			local soldSomething = nil
-			local totalSellValue = 0
-			for i = 0, NUM_BAG_SLOTS do
-				local slotMax = GetContainerNumSlots(i)
-				for j = 0, slotMax do
-					local count, locked, link = AutoGearGetContainerItemInfo(i, j)
-					if (link) then
-						local name = select(3, string.find(link, "^.*%[(.*)%].*$"))
-						if (string.find(link,"|cff9d9d9d") and not locked and not AutoGearIsQuestItem(i,j)) then
-							totalSellValue = totalSellValue + select(11, GetItemInfo(link)) * count
-							PickupContainerItem(i, j)
-							PickupMerchantItem()
-							soldSomething = 1
-						end
-					end
-				end
-			end
-			if (soldSomething) then
-				AutoGearPrint("AutoGear: Sold all grey items for "..AutoGearCashToString(totalSellValue)..".", 1)
-			end
+			AutoGearStartSellingGreys()
 		end
 		if (AutoGearDB.AutoRepair == true) then
 			-- repair all gear
@@ -3078,10 +3146,211 @@ function AutoGearCashToString(cash)
 	return gold..silver..copper
 end
 
-function AutoGearIsQuestItem(container, slot)
-	return AutoGearItemContainsText(container, slot, "Quest Item")
+--reads item IDs from text containing item IDs and item links, in order and without duplicates
+function AutoGearParseItemIDList(text)
+	--item links hold other numbers too (enchants, bonus IDs, digits in item names), so reduce each link to its item ID first
+	text = string.gsub(text, "|c[^|]*|Hitem:(%d+)[^|]*|h.-|h|r", " %1 ")
+	text = string.gsub(text, "|Hitem:(%d+)[^|]*|h.-|h", " %1 ")
+	local itemIDs, isListed = {}, {}
+	for itemIDText in string.gmatch(text, "%d+") do
+		local itemID = tonumber(itemIDText)
+		if (itemID > 0) and (not isListed[itemID]) then
+			isListed[itemID] = true
+			table.insert(itemIDs, itemID)
+		end
+	end
+	return itemIDs
 end
 
+--greys which have a sell price but which vendors refuse to buy
+AutoGearUnsellableGreyItemIDs = {
+	[200590] = true, --Carefully Rolled Message
+	[200592] = true, --Dirty Old Satchel
+	[200593] = true, --Sealed Expedition Note
+	[200594] = true, --Thaelin's Second Favorite Comb
+	[200595] = true, --Odorous Parchment
+	[200596] = true, --Letter from Thaelin Darkanvil
+	[200606] = true, --Previously Owned Map
+	[228431] = true, --Rock Buddy
+}
+
+--greys which Keeper Ta'hult in Oribos takes as payment for the Baubleworm pets
+AutoGearKeeperTahultPetGreyItemIDs = {
+	[3300] = true, --Rabbit's Foot
+	[3670] = true, --Large Slimy Bone
+	[6150] = true, --A Frayed Knot
+	[11406] = true, --Rotting Bear Carcass
+	[11944] = true, --Dark Iron Baby Booties
+	[25402] = true, --The Stoppable Force
+	[36812] = true, --Ground Gear
+	[62072] = true, --Robble's Wobbly Staff
+	[67410] = true, --Very Unlucky Rock
+}
+
+--state of selling greys at the open vendor; nil while not selling
+local greySelling
+
+--returns the sale value and link of the item in a bag slot if it should be sold to a vendor, or nil to keep it
+function AutoGearGetItemSaleValue(bag, slot)
+	local count, locked, link = AutoGearGetContainerItemInfo(bag, slot)
+	if (not link) or locked then return end
+	--battle pets have battlepet: links and can't be sold
+	local itemID = tonumber(string.match(link, "item:(%d+)"))
+	if not itemID then return end
+	local _, _, quality, _, _, _, _, _, _, _, sellPrice, classID = GetItemInfo(link)
+	if (not quality) or (not sellPrice) or (sellPrice <= 0) then return end
+
+	local isListed = greySelling.listedItemIDs[itemID]
+	if quality == 0 then
+		if isListed
+		or AutoGearUnsellableGreyItemIDs[itemID]
+		or (AutoGearDB.KeepKeeperTahultPetItems and AutoGearKeeperTahultPetGreyItemIDs[itemID])
+		or greySelling.merchantCostItemIDs[itemID] then
+			return
+		end
+		if AutoGearDB.KeepUnboundGreyGear and ((classID == Enum.ItemClass.Weapon) or (classID == Enum.ItemClass.Armor)) then
+			local isBound
+			if C_Item and C_Item.IsBound and ItemLocation then
+				isBound = C_Item.IsBound(ItemLocation:CreateFromBagAndSlot(bag, slot))
+			else
+				isBound = AutoGearItemContainsText(bag, slot, ITEM_SOULBOUND)
+			end
+			if not isBound then return end
+		end
+	elseif not ((quality == 1) and isListed) then
+		return
+	end
+
+	if greySelling.upgradeBagSlots[bag..":"..slot] then return end
+	--an item whose tooltip can't be read can't be ruled out as a quest item
+	local isQuestItem, isTooltipUnreadable = AutoGearIsQuestItem(bag, slot)
+	if isQuestItem or isTooltipUnreadable then return end
+
+	return sellPrice * count, link
+end
+
+--counts sales which went through, judging by the item having left its bag slot; returns whether any sale is still pending
+function AutoGearSettleGreySales()
+	local isAnySalePending = false
+	for _, sale in pairs(greySelling.sales) do
+		if not sale.isSold then
+			local _, locked, link = AutoGearGetContainerItemInfo(sale.bag, sale.slot)
+			if link ~= sale.link then
+				sale.isSold = true
+				greySelling.soldValue = greySelling.soldValue + sale.value
+				greySelling.soldCount = greySelling.soldCount + 1
+			elseif locked then
+				isAnySalePending = true
+			end
+		end
+	end
+	return isAnySalePending
+end
+
+--sells everything that should be sold and returns whether selling needs another pass
+function AutoGearSellGreysPass()
+	local needsAnotherPass = AutoGearSettleGreySales()
+	for bag = 0, (NUM_TOTAL_EQUIPPED_BAG_SLOTS or NUM_BAG_SLOTS) do
+		for slot = 1, GetContainerNumSlots(bag) do
+			local value, link = AutoGearGetItemSaleValue(bag, slot)
+			if value then
+				local saleKey = bag..":"..slot..":"..link
+				local sale = greySelling.sales[saleKey]
+				if not sale then
+					sale = { bag = bag, slot = slot, link = link, value = value, attempts = 0 }
+					greySelling.sales[saleKey] = sale
+				end
+				if sale.attempts < 10 then
+					sale.attempts = sale.attempts + 1
+					UseContainerItem(bag, slot)
+					needsAnotherPass = true
+				end
+			end
+		end
+	end
+	return needsAnotherPass
+end
+
+function AutoGearStartSellingGreys()
+	if greySelling then AutoGearStopSellingGreys() end
+	if IsShiftKeyDown() then
+		AutoGearPrint("AutoGear: Not selling greys this time because Shift was held while opening the vendor.", 2)
+		return
+	end
+
+	greySelling = {
+		sales = {},
+		soldValue = 0,
+		soldCount = 0,
+		listedItemIDs = {},
+		merchantCostItemIDs = {},
+		upgradeBagSlots = {},
+	}
+	for _, itemID in ipairs(AutoGearParseItemIDList(AutoGearDB.SellGreysExclusions)) do
+		greySelling.listedItemIDs[itemID] = true
+	end
+	--keep items this vendor takes as payment for its goods
+	for merchantIndex = 1, GetMerchantNumItems() do
+		for costIndex = 1, (GetMerchantItemCostInfo(merchantIndex) or 0) do
+			local _, _, costLink = GetMerchantItemCostItem(merchantIndex, costIndex)
+			local costItemID = costLink and tonumber(string.match(costLink, "item:(%d+)"))
+			if costItemID then
+				greySelling.merchantCostItemIDs[costItemID] = true
+			end
+		end
+	end
+	--keep greys which AutoGear would equip as upgrades
+	AutoGearUpdateBestItems()
+	for _, bestItem in pairs(AutoGearBestItems) do
+		if bestItem.bag and bestItem.slot then
+			greySelling.upgradeBagSlots[bestItem.bag..":"..bestItem.slot] = true
+		end
+	end
+
+	AutoGearFrame:RegisterEvent("UI_ERROR_MESSAGE")
+	table.insert(AutoGearActionQueue, { action = "sellgreys", t = 0.0 })
+end
+
+function AutoGearStopSellingGreys(reason)
+	if not greySelling then return end
+	AutoGearSettleGreySales()
+	AutoGearFrame:UnregisterEvent("UI_ERROR_MESSAGE")
+	if greySelling.soldCount > 0 then
+		AutoGearPrint("AutoGear: Sold "..greySelling.soldCount.." grey item"..((greySelling.soldCount == 1) and "" or "s").." for "..AutoGearCashToString(greySelling.soldValue)..".", 1)
+	end
+	if reason then
+		AutoGearPrint("AutoGear: Stopped selling greys because "..reason..".", 1)
+	end
+	greySelling = nil
+end
+
+function AutoGearSellGreysTick()
+	--using a bag item with no vendor open would use or equip it instead of selling it
+	if not (MerchantFrame and MerchantFrame:IsShown()) then
+		AutoGearStopSellingGreys()
+		return
+	end
+	if not AutoGearSellGreysPass() then
+		AutoGearStopSellingGreys()
+	else
+		table.insert(AutoGearActionQueue, { action = "sellgreys", t = 0.0 })
+	end
+end
+
+function AutoGearHandleSellingError(message)
+	if (not greySelling) or (not message) or (issecretvalue and issecretvalue(message)) then return end
+	if message == ERR_VENDOR_DOESNT_BUY then
+		AutoGearStopSellingGreys("this vendor doesn't buy items")
+	elseif message == ERR_TOO_MUCH_GOLD then
+		AutoGearStopSellingGreys("you have max gold on this character")
+	end
+end
+
+function AutoGearIsQuestItem(container, slot)
+	return AutoGearItemContainsText(container, slot, ITEM_BIND_QUEST or "Quest Item")
+end
+
+--returns whether a left-side line of the bag item's tooltip is exactly the search text; the second return value is true when the tooltip couldn't be read
 function AutoGearItemContainsText(container, slot, search)
 	AutoGearTooltip:SetOwner(UIParent, "ANCHOR_NONE")
 	AutoGearTooltip:ClearLines()
@@ -3090,6 +3359,10 @@ function AutoGearItemContainsText(container, slot, search)
 		local mytext = _G["AutoGearTooltipTextLeft" .. i]
 		if (mytext) then
 			local text = mytext:GetText()
+			--tooltip text can be a secret value under the Midnight addon restrictions; it can't be compared then
+			if issecretvalue and issecretvalue(text) then
+				return nil, true
+			end
 			if (text == search) then
 				return 1
 			end
@@ -5178,10 +5451,31 @@ function AutoGearTooltipHook(tooltip, tooltipData)
 	-- AutoGearPrint("name: "..tostring(name).."; link: "..tostring(link).."; guid: "..tostring(guid).."; equipped: "..tostring(AutoGearSlotNames and AutoGearSlotNames[equipped] or equipped))
 end
 
+--idTip adds its own "ItemID" line to item tooltips unless it's turned off overall or for items in its settings; versions without settings don't define idTipConfig and always add it
+function AutoGearIsIdTipShowingItemIDs()
+	local isAddOnLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+	if not isAddOnLoaded("idTip") then return false end
+	if type(idTipConfig) ~= "table" then return true end
+	return (idTipConfig.enabled ~= false) and (idTipConfig.itemEnabled ~= false)
+end
+
+--show item IDs in item tooltips while the AutoGear options are open, for filling in the grey selling exclusions
+function AutoGearAddItemIDToTooltip(tooltip)
+	if (tooltip ~= GameTooltip) or (not optionsMenuParent:IsVisible()) or AutoGearIsIdTipShowingItemIDs() then return end
+	local _, link = tooltip:GetItem()
+	if (not link) or (issecretvalue and issecretvalue(link)) then return end
+	local itemID = string.match(link, "item:(%d+)")
+	if itemID then
+		tooltip:AddDoubleLine(L["Item ID"], itemID)
+	end
+end
+
 if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and C_TooltipInfo then
 	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, AutoGearTooltipHook)
+	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, AutoGearAddItemIDToTooltip)
 else
 	GameTooltip:HookScript("OnTooltipSetItem", AutoGearTooltipHook)
+	GameTooltip:HookScript("OnTooltipSetItem", AutoGearAddItemIDToTooltip)
 	ShoppingTooltip1:HookScript("OnTooltipSetItem", AutoGearTooltipHook)
 	ShoppingTooltip2:HookScript("OnTooltipSetItem", AutoGearTooltipHook)
 	ItemRefTooltip:HookScript("OnTooltipSetItem", AutoGearTooltipHook)
@@ -5194,7 +5488,7 @@ function AutoGearQueueLocalUpdate()
 	--check if there's already a local update action in queue
 	local localUpdateFound = nil
 	for i, curAction in ipairs(AutoGearActionQueue) do
-		if (curAction.action == "localupdate") then
+		if curAction.t and (curAction.action == "localupdate") then
 			localUpdateFound = 1
 		end
 	end
@@ -5208,7 +5502,7 @@ function AutoGearQueueScan()
 	--check if there's already a scan action in queue
 	local scanFound = nil
 	for i, curAction in ipairs(AutoGearActionQueue) do
-		if (curAction.action == "scan") then
+		if curAction.t and (curAction.action == "scan") then
 			--push the time ahead until all the items have arrived
 			curAction.t = GetTime() + 1.0
 			scanFound = 1
@@ -5224,17 +5518,21 @@ function AutoGearMain()
 	if (GetTime() - tUpdate > 0.05) then
 		tUpdate = GetTime()
 		--future actions
-		for i, curAction in ipairs(AutoGearActionQueue) do
+		local queuedActionCount = #AutoGearActionQueue
+		for i = 1, queuedActionCount do
+			local curAction = AutoGearActionQueue[i]
+
 			-- if there's any item data missing, don't do anything that matters and instead try updating again
-			if curAction.action == "localupdate" then
+			if curAction.t and curAction.action == "localupdate" then
 				if GetTime() > curAction.t then
 					AutoGearSomeItemDataIsMissing = nil
+					curAction.t = nil
+					queueQueueRebuild = 1
 					AutoGearUpdateBestItems() -- this will set AutoGearSomeItemDataIsMissing again if necessary
-					table.remove(AutoGearActionQueue, i)
 				end
 			end
 			if (not AutoGearSomeItemDataIsMissing) then
-				if curAction.action == "roll" then
+				if curAction.t and curAction.action == "roll" then
 					if GetTime() > curAction.t then
 						if curAction.rollType == 1 then
 							AutoGearPrint("AutoGear: "..(((AutoGearDB.AutoLootRoll == true) and (AutoGearDB.NeverAutoNeed ~= true)) and "Rolling " or "If automatically rolling "..((AutoGearDB.NeverAutoNeed ~= true) and "" or (GREEN_FONT_COLOR_CODE.."NEED"..FONT_COLOR_CODE_CLOSE.." ")).."on loot was enabled, would roll ")..GREEN_FONT_COLOR_CODE.."NEED"..FONT_COLOR_CODE_CLOSE.." on "..curAction.info.link..".", 1)
@@ -5248,9 +5546,10 @@ function AutoGearMain()
 						((rarity == 4) and (AutoGearDB.AutoRollOnEpics == true))) then
 							RollOnLoot(curAction.rollID, curAction.rollType)
 						end
-						table.remove(AutoGearActionQueue, i)
+						curAction.t = nil
+						queueQueueRebuild = 1
 					end
-				elseif (curAction.action == "equip" and not UnitAffectingCombat("player") and not UnitIsDeadOrGhost("player")) then
+				elseif curAction.t and (curAction.action == "equip" and not UnitAffectingCombat("player") and not UnitIsDeadOrGhost("player")) then
 					if (GetTime() > curAction.t) then
 						if ((AutoGearDB.Enabled ~= nil) and (AutoGearDB.Enabled == true)) then
 							if (not curAction.messageAlready) then
@@ -5266,7 +5565,8 @@ function AutoGearMain()
 									curAction.waitingOnEmptyMainHand = 1
 								else
 									AutoGearPrint("AutoGear: Cannot equip the off-hand because bags are too full to remove the two-hander", 0)
-									table.remove(AutoGearActionQueue, i)
+									curAction.t = nil
+									queueQueueRebuild = 1
 								end
 							elseif (curAction.waitingOnEmptyMainHand and not AutoGearEquippedItems[INVSLOT_MAINHAND].info.empty) then
 								AutoGearUpdateEquippedItem(INVSLOT_MAINHAND)
@@ -5280,7 +5580,8 @@ function AutoGearMain()
 									if (not AutoGearActionQueue[i+1]) or (not AutoGearActionQueue[i+1].ensuringEquipped) then
 										AutoGearUpdateEquippedItems()
 									end
-									table.remove(AutoGearActionQueue, i)
+									curAction.t = nil
+									queueQueueRebuild = 1
 								end
 							else
 								if ((not curAction.container) or (not curAction.slot))
@@ -5291,10 +5592,11 @@ function AutoGearMain()
 								if (not curAction.container) or (not curAction.slot) then
 									AutoGearBrokenAction = curAction
 									AutoGearPrint("Error: The current equip action has either no container or no slot! This should never happen, so it must be a bug. It's now been saved to global variable AutoGearBrokenAction, so try \"/dump AutoGearBrokenAction\" and send the output to the AutoGear author.",0)
-									table.remove(AutoGearActionQueue, i)
-								end
+									curAction.t = nil
+									queueQueueRebuild = 1
+								--everything below needs the container and slot, so it only runs when both are known
 								-- prevent equip error when bag is replacing the bag it's inside
-								if curAction.replaceSlot >= AutoGearFirstEquippableBagSlot
+								elseif curAction.replaceSlot >= AutoGearFirstEquippableBagSlot
 								and curAction.container == (curAction.replaceSlot - AutoGearFirstEquippableBagSlot + 1) then
 									if not curAction.movedOutOfBag then
 										local destBag, destSlot
@@ -5322,7 +5624,8 @@ function AutoGearMain()
 											curAction.movedOutOfBag = true
 										else
 											AutoGearPrint("AutoGear: Cannot equip bag because there is no empty slot in another bag to move it to.", 0)
-											table.remove(AutoGearActionQueue, i)
+											curAction.t = nil
+											queueQueueRebuild = 1
 										end
 									else
 										PickupContainerItem(curAction.container, curAction.slot)
@@ -5337,16 +5640,34 @@ function AutoGearMain()
 								end
 							end
 						else
-							table.remove(AutoGearActionQueue, i)
+							curAction.t = nil
+							queueQueueRebuild = 1
 						end
 					end
-				elseif (curAction.action == "scan") then
+				elseif curAction.t and (curAction.action == "scan") then
 					if (GetTime() > curAction.t) then
 						AutoGearConsiderAllItems()
-						if not AutoGearSomeItemDataIsMissing then table.remove(AutoGearActionQueue, i) end
+						if not AutoGearSomeItemDataIsMissing then
+							curAction.t = nil
+							queueQueueRebuild = 1
+						end
+					end
+				elseif curAction.t and (curAction.action == "sellgreys") then
+					if (GetTime() > curAction.t) then
+						curAction.t = nil
+						queueQueueRebuild = 1
+						if greySelling then AutoGearSellGreysTick() end
 					end
 				end
 			end
+		end
+		if queueQueueRebuild then
+			local rebuiltQueue = {}
+			for _, curAction in ipairs(AutoGearActionQueue) do
+				if curAction.t then table.insert(rebuiltQueue, curAction) end
+			end
+			AutoGearActionQueue = rebuiltQueue
+			queueQueueRebuild = nil
 		end
 	end
 end
