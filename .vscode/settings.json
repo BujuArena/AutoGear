@@ -120,7 +120,8 @@
         "assertsafe",
         "WowStyle1DropdownMixin",
         "PanelTemplates_SetTab",
-        "PanelTemplates_SetNumTabs"
+        "PanelTemplates_SetNumTabs",
+        "ITEM_SET_NAME"
     ],
     "Lua.runtime.version": "Lua 5.1",
     "Lua.runtime.builtin": {

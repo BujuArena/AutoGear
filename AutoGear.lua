@@ -3768,6 +3768,9 @@ function AutoGearPrintItem(info)
 	end
 end
 
+--matches the item set header line in item tooltips, like "Midnight Herald's Regalia (2/5)"; ITEM_SET_NAME is "%s (%d/%d)" in English and is localized, so magic characters are escaped before turning its format specifiers into pattern items
+local ITEM_SET_NAME_PATTERN = "^"..(ITEM_SET_NAME:gsub("[%(%)%.%+%-%*%?%[%]%^%$]", "%%%0"):gsub("%%s", ".+"):gsub("%%d", "%%d+")).."$"
+
 function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRewardIndex, link, tooltipData)
 	if not tooltipData then
 		AutoGearTooltip:SetOwner(UIParent, "ANCHOR_NONE")
@@ -3939,6 +3942,9 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 
 	local numLines = tooltipData and #tooltipData.lines or AutoGearTooltip:NumLines()
 	local textLeft, textRight
+	--disabled set bonuses used to be grey but turned red in Midnight, leading to needing this detection to prevent falsely detecting items with disabled set bonuses as unusable
+	--the item set section starts at its header line and comes after the item's own requirements; red text there (like an inactive set bonus's "Requires level 80 or below") is about the set, not about using the item
+	local isInItemSetSection = false
 
 	for i = 1, numLines do
 		local textLeftText
@@ -3965,6 +3971,9 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 				return info
 			end
 			local text = select(1,string.gsub(textLeftText:lower(),",",""))
+			if (i > 1) and string.match(textLeftText, ITEM_SET_NAME_PATTERN) then
+				isInItemSetSection = true
+			end
 			if i==1 then
 				info.name = textLeftText
 				if info.name == "Retrieving item information" or not info.item:IsItemDataCached() then
@@ -4118,7 +4127,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			if string.find(text, "plans:") then info.unusable = 1 end
 
 			--check for red text on the left
-			if ((g==0 or r/g>3) and (b==0 or r/b>3) and math.abs(b-g)<0.1 and r>0.5 and textLeftText) then --this is red text
+			if (not isInItemSetSection) and ((g==0 or r/g>3) and (b==0 or r/b>3) and math.abs(b-g)<0.1 and r>0.5 and textLeftText) then --this is red text
 				--if Within5levels was already set but we found another red text, clear it, because we really can't use this
 				if info.Within5levels then info.Within5levels = nil end
 				--if there's not already a reason we cannot use and this is just a required level, check if it's within 5 levels
@@ -4152,7 +4161,7 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 					info.reason = "(item data is restricted right now)"
 					return info
 				end
-				if ((g==0 or r/g>3) and (b==0 or r/b>3) and math.abs(b-g)<0.1 and r>0.5 and textRightText) then --this is red text
+				if (not isInItemSetSection) and ((g==0 or r/g>3) and (b==0 or r/b>3) and math.abs(b-g)<0.1 and r>0.5 and textRightText) then --this is red text
 					info.reason = "(found red text: \""..textRightText.."\")"
 					info.unusable = 1
 				end
