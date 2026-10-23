@@ -36,7 +36,8 @@ local _, T = ...
 --- - BfA: 80000
 --- - SL: 90000
 --- - DF: 100000
---- - DF: 110000
+--- - TWW: 110000
+--- - Midnight: 120000
 local TOC_VERSION_CURRENT = select(4, GetBuildInfo())
 local TOC_VERSION_TBC = 20000
 local TOC_VERSION_WOTLK = 30000
@@ -48,6 +49,7 @@ local TOC_VERSION_BFA = 80000
 local TOC_VERSION_SL = 90000
 local TOC_VERSION_DF = 100000
 local TOC_VERSION_TWW = 110000
+local TOC_VERSION_MIDNIGHT = 120000
 
 ---WoW Forever runs the modern (Mainline) UI engine and API but reports a 1.x interface number (16001),
 ---so TOC_VERSION_CURRENT alone must not be used to decide which API family is present.
