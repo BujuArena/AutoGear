@@ -2220,6 +2220,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			AutoConfirmBindingBlues = false,
 			AutoConfirmBindingEpics = false,
 			AutoAcceptQuests = false,
+			AutoCompleteNonItemQuests = false,
 			AutoCompleteItemQuests = false,
 			AutoAcceptPartyInvitations = false,
 			ScoreInTooltips = true,
@@ -2358,10 +2359,21 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["cliCommands"] = { "quest", "quests" },
 				["cliTrue"] = { "enable", "on", "start" },
 				["cliFalse"] = { "disable", "off", "stop" },
-				["label"] = L["Automatically accept all quests and complete quests which do not award items"],
-				["description"] = L["Automatically accept all quests and complete quests which do not award items.  If this is disabled, AutoGear will not accept any quests and will only be able to complete quests which award items."],
-				["toggleDescriptionTrue"] = L["Automatically accepting all quests and completing quests which do not award items is now enabled."],
-				["toggleDescriptionFalse"] = L["Automatically accepting all quests and completing quests which do not award items is now disabled."]
+				["label"] = L["Automatically accept all quests"],
+				["description"] = L["Automatically accept all quests offered by NPCs and group members.  If this is disabled, AutoGear will not accept any quests."],
+				["toggleDescriptionTrue"] = L["Automatically accepting all quests is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically accepting all quests is now disabled."]
+			},
+			{
+				["option"] = "AutoCompleteNonItemQuests",
+				["tab"] = L["Quests & Party"],
+				["cliCommands"] = { "completequests", "completenonitemquests", "turnin", "turnins" },
+				["cliTrue"] = { "enable", "on", "start" },
+				["cliFalse"] = { "disable", "off", "stop" },
+				["label"] = L["Automatically complete quests which do not award items"],
+				["description"] = L["Automatically turn in completed quests which do not offer a choice of item rewards.  If this is disabled, AutoGear will not turn in these quests, but it can still complete quests which award items if \"Automatically complete quests which award items\" is enabled."],
+				["toggleDescriptionTrue"] = L["Automatically completing quests which do not award items is now enabled."],
+				["toggleDescriptionFalse"] = L["Automatically completing quests which do not award items is now disabled."]
 			},
 			{
 				["option"] = "AutoCompleteItemQuests",
@@ -2709,7 +2721,8 @@ function AutoGearPrintHelp()
 	AutoGearPrint("AutoGear:    '/ag roll [enable/on/start]/[disable/off/stop]': toggle automatic loot rolling", 0)
 	AutoGearPrint("AutoGear:    '/ag bind [enable/on/start]/[disable/off/stop]': toggle automatic soul-binding confirmation", 0)
 	AutoGearPrint("AutoGear:    '/ag neverneed [enable/on/start]/[disable/off/stop]': toggle preventing automatically rolling NEED", 0)
-	AutoGearPrint("AutoGear:    '/ag quest [enable/on/start]/[disable/off/stop]': toggle automatic quest handling", 0)
+	AutoGearPrint("AutoGear:    '/ag quest [enable/on/start]/[disable/off/stop]': toggle automatically accepting quests", 0)
+	AutoGearPrint("AutoGear:    '/ag turnin [enable/on/start]/[disable/off/stop]': toggle automatically completing quests which do not award items", 0)
 	AutoGearPrint("AutoGear:    '/ag party [enable/on/start]/[disable/off/stop]': toggle automatic acceptance of party invitations", 0)
 	AutoGearPrint("AutoGear:    '/ag tooltip [toggle/show/hide]': toggle showing score in item tooltips", 0)
 	AutoGearPrint("AutoGear:    '/ag reasons [toggle/show/hide]': toggle showing won't-auto-equip reasons in item tooltips", 0)
@@ -2755,51 +2768,65 @@ end
 
 AutoGearFrame:SetScript("OnEvent", function (this, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, ...)
 
-	if (AutoGearDB.AutoAcceptQuests) then
-		if (event == "QUEST_ACCEPT_CONFIRM") then --another group member starts a quest (like an escort)
+	--turning in a quest takes the same steps up to the reward screen whether or not it awards items, so either completion option opens completed quests and continues past the progress screen
+	local shouldAdvanceQuestTurnIns = AutoGearDB.AutoCompleteNonItemQuests or AutoGearDB.AutoCompleteItemQuests
+	if (event == "QUEST_ACCEPT_CONFIRM") then --another group member starts a quest (like an escort)
+		if (AutoGearDB.AutoAcceptQuests) then
 			ConfirmAcceptQuest()
-		elseif (event == "QUEST_DETAIL") then
+		end
+	elseif (event == "QUEST_DETAIL") then
+		if (AutoGearDB.AutoAcceptQuests) then
 			QuestDetailAcceptButton_OnClick()
-		elseif (event == "GOSSIP_SHOW") then
-			--active quests
+		end
+	elseif (event == "GOSSIP_SHOW") then
+		--active quests
+		if (shouldAdvanceQuestTurnIns) then
 			for i = 1, C_GossipInfo.GetNumActiveQuests() do
 				local quest = C_GossipInfo.GetActiveQuests()[i]
 				if (quest["isComplete"]==true) then
 					C_GossipInfo.SelectActiveQuest(quest.questID)
 				end
 			end
-			--available quests
+		end
+		--available quests
+		if (AutoGearDB.AutoAcceptQuests) then
 			for i = 1, C_GossipInfo.GetNumAvailableQuests() do
 				local quest = C_GossipInfo.GetAvailableQuests()[i]
 				if (quest["isTrivial"]==false) then
 					C_GossipInfo.SelectAvailableQuest(quest.questID)
 				end
 			end
-		elseif (event == "QUEST_GREETING") then
-			--active quests
+		end
+	elseif (event == "QUEST_GREETING") then
+		--active quests
+		if (shouldAdvanceQuestTurnIns) then
 			for i = 1, GetNumActiveQuests() do
 				local title, isComplete = GetActiveTitle(i)
 				if (isComplete) then
 					SelectActiveQuest(i)
 				end
 			end
-			--available quests
+		end
+		--available quests
+		if (AutoGearDB.AutoAcceptQuests) then
 			for i = 1, C_GossipInfo.GetNumAvailableQuests() do
 				local quest = C_GossipInfo.GetAvailableQuests()[i]
 				if (not quest.isTrivial) then
 					C_GossipInfo.SelectAvailableQuest(quest.questID)
 				end
 			end
-		elseif (event == "QUEST_PROGRESS") then
-			if (IsQuestCompletable()) then
-				CompleteQuest()
-			end
+		end
+	elseif (event == "QUEST_PROGRESS") then
+		if (shouldAdvanceQuestTurnIns and IsQuestCompletable()) then
+			CompleteQuest()
 		end
 	end
 	if (event == "QUEST_COMPLETE") then
 		local rewards = GetNumQuestChoices()
-		if ((not rewards or rewards == 0) and AutoGearDB.AutoAcceptQuests) then
-			GetQuestReward()
+		if (not rewards or rewards == 0) then
+			if (AutoGearDB.AutoCompleteNonItemQuests) then
+				GetQuestReward()
+			end
 		elseif (AutoGearDB.AutoCompleteItemQuests) then
 			--choose a quest reward
 			local questRewardIDs = {}

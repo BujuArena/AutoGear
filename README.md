@@ -28,7 +28,8 @@ Chat commands:
 /ag scan - manually run automatic gearing once (scan all bags for better gear)
 /ag spec - query name of current specialization
 /ag toggle/[enable/on/start]/[disable/off/stop] - toggle automatic gearing
-/ag quest [enable/on/start]/[disable/off/stop] - toggle quest handling
+/ag quest [enable/on/start]/[disable/off/stop] - toggle automatically accepting quests
+/ag turnin [enable/on/start]/[disable/off/stop] - toggle automatically completing quests which do not award items
 /ag party [enable/on/start]/[disable/off/stop] - toggle automatic acceptance of party invitations
 /ag verbosity [0/1/2]: set allowed verbosity level; valid levels are: 0 (errors), 1 (info), 2 (details)
 ```

@@ -71,10 +71,16 @@ if GetLocale() == "deDE" then
 	T.Localization["Automatically confirming soul-binding for epics is now disabled.  AutoGear will still try to equip epic binding gear, but you will have to confirm soul-binding manually."] = "Automatisches Bestätigen der Seelenbindung für epische Gegenstände ist jetzt deaktiviert.  AutoGear versucht weiterhin, epische bindende Gegenstände anzulegen, aber du musst die Seelenbindung selbst bestätigen."
 
 	-- option: AutoAcceptQuests
-	T.Localization["Automatically accept all quests and complete quests which do not award items"] = "Alle Quests automatisch annehmen und Quests ohne Gegenstandsbelohnung abschließen"
-	T.Localization["Automatically accept all quests and complete quests which do not award items.  If this is disabled, AutoGear will not accept any quests and will only be able to complete quests which award items."] = "Alle Quests automatisch annehmen und Quests ohne Gegenstandsbelohnung automatisch abschließen.  Ist dies deaktiviert, nimmt AutoGear keine Quests an und kann nur Quests mit Gegenstandsbelohnung abschließen."
-	T.Localization["Automatically accepting all quests and completing quests which do not award items is now enabled."] = "Automatisches Annehmen aller Quests und Abschließen von Quests ohne Gegenstandsbelohnung ist jetzt aktiviert."
-	T.Localization["Automatically accepting all quests and completing quests which do not award items is now disabled."] = "Automatisches Annehmen aller Quests und Abschließen von Quests ohne Gegenstandsbelohnung ist jetzt deaktiviert."
+	T.Localization["Automatically accept all quests"] = "Alle Quests automatisch annehmen"
+	T.Localization["Automatically accept all quests offered by NPCs and group members.  If this is disabled, AutoGear will not accept any quests."] = "Alle Quests von NSCs und Gruppenmitgliedern automatisch annehmen.  Ist dies deaktiviert, nimmt AutoGear keine Quests an."
+	T.Localization["Automatically accepting all quests is now enabled."] = "Automatisches Annehmen aller Quests ist jetzt aktiviert."
+	T.Localization["Automatically accepting all quests is now disabled."] = "Automatisches Annehmen aller Quests ist jetzt deaktiviert."
+
+	-- option: AutoCompleteNonItemQuests
+	T.Localization["Automatically complete quests which do not award items"] = "Quests ohne Gegenstandsbelohnung automatisch abschließen"
+	T.Localization["Automatically turn in completed quests which do not offer a choice of item rewards.  If this is disabled, AutoGear will not turn in these quests, but it can still complete quests which award items if \"Automatically complete quests which award items\" is enabled."] = "Abgeschlossene Quests, die keine Auswahl an Gegenstandsbelohnungen bieten, automatisch abgeben.  Ist dies deaktiviert, gibt AutoGear diese Quests nicht ab, kann aber weiterhin Quests mit Gegenstandsbelohnung abschließen, wenn \"Quests mit Gegenstandsbelohnung automatisch abschließen\" aktiviert ist."
+	T.Localization["Automatically completing quests which do not award items is now enabled."] = "Automatisches Abschließen von Quests ohne Gegenstandsbelohnung ist jetzt aktiviert."
+	T.Localization["Automatically completing quests which do not award items is now disabled."] = "Automatisches Abschließen von Quests ohne Gegenstandsbelohnung ist jetzt deaktiviert."
 
 	-- option: AutoCompleteItemQuests
 	T.Localization["Automatically complete quests which award items"] = "Quests mit Gegenstandsbelohnung automatisch abschließen"
