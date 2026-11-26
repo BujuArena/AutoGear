@@ -2279,6 +2279,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			AutoCompleteItemQuests = false,
 			AutoAcceptPartyInvitations = false,
 			ScoreInTooltips = true,
+			ScoreInBagTooltips = true,
 			ReasonsInTooltips = false,
 			AlwaysCompareGear = GetCVarBool("alwaysCompareItems"),
 			AlwaysShowScoreComparisons = false,
@@ -2465,6 +2466,17 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["description"] = L["Show total AutoGear item score from internal AutoGear stat weights in item tooltips."],
 				["toggleDescriptionTrue"] = L["Showing score in item tooltips is now enabled."],
 				["toggleDescriptionFalse"] = L["Showing score in item tooltips is now disabled."]
+			},
+			{
+				["option"] = "ScoreInBagTooltips",
+				["tab"] = L["Tooltips"],
+				["cliCommands"] = { "bagscore", "bagtooltip", "bagtooltips" },
+				["cliTrue"] = { "show", "enable", "on", "start" },
+				["cliFalse"] = { "hide", "disable", "off", "stop" },
+				["label"] = L["Show AutoGear score in bag tooltips"],
+				["description"] = L["Show the AutoGear score in tooltips of bags, quivers and ammo pouches.  Bags are scored by their number of slots.  Hiding the score does not stop AutoGear from equipping bigger bags."],
+				["toggleDescriptionTrue"] = L["Showing score in bag tooltips is now enabled."],
+				["toggleDescriptionFalse"] = L["Showing score in bag tooltips is now disabled."]
 			},
 			{
 				["option"] = "ReasonsInTooltips",
@@ -4041,8 +4053,28 @@ function AutoGearPrintItem(info)
 	end
 end
 
---matches the item set header line in item tooltips, like "Midnight Herald's Regalia (2/5)"; ITEM_SET_NAME is "%s (%d/%d)" in English and is localized, so magic characters are escaped before turning its format specifiers into pattern items
-local ITEM_SET_NAME_PATTERN = "^"..(ITEM_SET_NAME:gsub("[%(%)%.%+%-%*%?%[%]%^%$]", "%%%0"):gsub("%%s", ".+"):gsub("%%d", "%%d+")).."$"
+---Turns a localized global format string into an anchored Lua pattern for matching tooltip lines.
+---Numbered specifiers ("%1$d", used e.g. by German and French) are reduced to plain ones first, because they would
+---become invalid back-references; magic characters are escaped; "%d" becomes a captured "(%d+)" and "%s" becomes ".+";
+---grammar escapes such as Russian "|4slot:slots;", which the client resolves before display, match any text.
+---@param formatString string a GlobalStrings format string, e.g. CONTAINER_SLOTS ("%d Slot %s")
+---@return string pattern anchored pattern whose captures are the "%d" numbers in order of appearance
+local function AutoGearFormatStringToPattern(formatString)
+	local grammarPlaceholder = "\001"
+	local pattern = formatString
+		:gsub("%%%d+%$", "%%")
+		:gsub("|4[^;]*;", grammarPlaceholder)
+		:gsub("[%(%)%.%+%-%*%?%[%]%^%$]", "%%%0")
+		:gsub("%%s", ".+")
+		:gsub("%%d", "(%%d+)")
+		:gsub(grammarPlaceholder, ".-")
+	return "^"..pattern.."$"
+end
+
+--matches the item set header line in item tooltips, like "Midnight Herald's Regalia (2/5)"; ITEM_SET_NAME is "%s (%d/%d)" in English
+local ITEM_SET_NAME_PATTERN = AutoGearFormatStringToPattern(ITEM_SET_NAME)
+--matches the bag size line in bag and quiver tooltips and captures the number of slots, like "16 Slot Bag" (German "16 Platz Behälter")
+local CONTAINER_SLOTS_PATTERN = AutoGearFormatStringToPattern(CONTAINER_SLOTS)
 
 function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRewardIndex, link, tooltipData)
 	if not tooltipData then
@@ -4311,14 +4343,11 @@ function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRew
 			else
 				value = 0
 			end
-			if value > 0
-			and (
-				string.find(text, " bag") or
-				string.find(text, " quiver") or
-				string.find(text, " ammo pouch") or
-				string.find(text, " tackle box")
-			) then
-				info.numBagSlots = (info.numBagSlots or 0) + value
+			-- the bag size line is localized, so it is matched against CONTAINER_SLOTS instead of English words
+			local containerSlotsText = string.match(textLeftText, CONTAINER_SLOTS_PATTERN)
+			local containerSlots = containerSlotsText and tonumber(containerSlotsText)
+			if containerSlots and containerSlots > 0 then
+				info.numBagSlots = (info.numBagSlots or 0) + containerSlots
 			end
 			if value > 0
 			and info.isAmmoBag
@@ -4870,19 +4899,27 @@ function AutoGearGetWeaponType(itemClassID, itemSubClassID)
 	end
 end
 
+---Whether an item is scored by its number of bag slots instead of by its stats (Pawn or stat weights).
+---@param info table item info from AutoGearReadItemInfo
+---@return boolean
+function AutoGearIsScoredBySlotCount(info)
+	if info.classID == Enum.ItemClass.Container then return true end
+	return (info.isAmmoBag and info.numBagSlots and (UnitClassBase("player") == "HUNTER")) and true or false
+end
+
 function AutoGearDetermineItemScore(info)
 	if info.empty then return 0 end
 	if info.isMount and (not info.alreadyKnown) then
 		return math.huge
 	end
-	if info.classID == Enum.ItemClass.Container then
-		if info.subclassID == 0 then -- generic (typical) bag; there's no Enum.ItemContainerSubclass
+	if AutoGearIsScoredBySlotCount(info) then
+		if info.classID ~= Enum.ItemClass.Container then -- hunter ammo bag
+			return info.numBagSlots + (info.ammoBagRangedAttackSpeed and info.ammoBagRangedAttackSpeed or 0)
+		elseif info.subclassID == 0 then -- generic (typical) bag; there's no Enum.ItemContainerSubclass
 			return info.numBagSlots or 0
 		else
 			return (info.numBagSlots or 0) * E -- specialized bags suck, so consider them only better than nothing
 		end
-	elseif info.isAmmoBag and info.numBagSlots and (UnitClassBase("player") == "HUNTER") then
-		return info.numBagSlots + (info.ammoBagRangedAttackSpeed and info.ammoBagRangedAttackSpeed or 0)
 	end
 
 	if AutoGearDB.UsePawn and PawnIsReady and PawnIsReady() then
@@ -5259,7 +5296,9 @@ function AutoGearTooltipHook(tooltip, tooltipData)
 	local scoreWithBestSet
 	local bestSet
 	local scoreColor = HIGHLIGHT_FONT_COLOR
-	if info.shouldShowScoreInTooltip then
+	-- bags (scored by slot count) can be left out of tooltip scores on their own
+	local isHiddenBagScore = (not AutoGearDB.ScoreInBagTooltips) and AutoGearIsScoredBySlotCount(info)
+	if info.shouldShowScoreInTooltip and (not isHiddenBagScore) then
 		local shouldShowBestSet = ((info.is1hWeaponOrOffHand
 		or (info.numValidGearSlots and info.numValidGearSlots > 1))
 		and (not isAComparisonTooltip))
@@ -5279,7 +5318,8 @@ function AutoGearTooltipHook(tooltip, tooltipData)
 		bestSetScore = math.floor(bestSetScore * 1000) / 1000
 		scoreWithBestSet = math.floor(scoreWithBestSet * 1000) / 1000
 		equippedSetScore = math.floor(equippedSetScore * 1000) / 1000
-		local scoreLinePrefix = (((pawnScaleLocalizedName or pawnScaleName) and pawnScaleColor) and "AutoGear: Pawn \""..pawnScaleColor..(pawnScaleLocalizedName or pawnScaleName)..FONT_COLOR_CODE_CLOSE.."\"" or "AutoGear")
+		-- bags are scored by slot count, not by the Pawn scale, so their lines must not name the scale
+		local scoreLinePrefix = (((pawnScaleLocalizedName or pawnScaleName) and pawnScaleColor and not AutoGearIsScoredBySlotCount(info)) and "AutoGear: Pawn \""..pawnScaleColor..(pawnScaleLocalizedName or pawnScaleName)..FONT_COLOR_CODE_CLOSE.."\"" or "AutoGear")
 		if shouldShowComparisonLine or shouldShowBestSet then
 			lowestScoringEquippedItemScore = math.floor(lowestScoringEquippedItemScore * 1000) / 1000
 			tooltip:AddDoubleLine(scoreLinePrefix.." score".." (equipped"..(((not AutoGearIsTwoHandEquipped()) and info.isWeaponOrOffHand and not info.isRangedWeapon) and " pair" or (shouldShowBestSet and " set" or "")).."):",
