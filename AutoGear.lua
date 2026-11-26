@@ -4042,7 +4042,8 @@ function AutoGearPrintItem(info)
 end
 
 --matches the item set header line in item tooltips, like "Midnight Herald's Regalia (2/5)"; ITEM_SET_NAME is "%s (%d/%d)" in English and is localized, so magic characters are escaped before turning its format specifiers into pattern items
-local ITEM_SET_NAME_PATTERN = "^"..(ITEM_SET_NAME:gsub("[%(%)%.%+%-%*%?%[%]%^%$]", "%%%0"):gsub("%%s", ".+"):gsub("%%d", "%%d+")).."$"
+--the German client uses numbered specifiers ("%1$s (%2$d/%3$d)"), which become invalid back-references unless reduced to "%s" and "%d" first
+local ITEM_SET_NAME_PATTERN = "^"..(ITEM_SET_NAME:gsub("%%%d+%$", "%%"):gsub("[%(%)%.%+%-%*%?%[%]%^%$]", "%%%0"):gsub("%%s", ".+"):gsub("%%d", "%%d+")).."$"
 
 function AutoGearReadItemInfo(inventoryID, lootRollID, container, slot, questRewardIndex, link, tooltipData)
 	if not tooltipData then
