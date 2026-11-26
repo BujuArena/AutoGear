@@ -2279,6 +2279,7 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 			AutoCompleteItemQuests = false,
 			AutoAcceptPartyInvitations = false,
 			ScoreInTooltips = true,
+			ScoreInBagTooltips = true,
 			ReasonsInTooltips = false,
 			AlwaysCompareGear = GetCVarBool("alwaysCompareItems"),
 			AlwaysShowScoreComparisons = false,
@@ -2465,6 +2466,17 @@ optionsMenu:SetScript("OnEvent", function (self, event, arg1, arg2, ...)
 				["description"] = L["Show total AutoGear item score from internal AutoGear stat weights in item tooltips."],
 				["toggleDescriptionTrue"] = L["Showing score in item tooltips is now enabled."],
 				["toggleDescriptionFalse"] = L["Showing score in item tooltips is now disabled."]
+			},
+			{
+				["option"] = "ScoreInBagTooltips",
+				["tab"] = L["Tooltips"],
+				["cliCommands"] = { "bagscore", "bagtooltip", "bagtooltips" },
+				["cliTrue"] = { "show", "enable", "on", "start" },
+				["cliFalse"] = { "hide", "disable", "off", "stop" },
+				["label"] = L["Show AutoGear score in bag tooltips"],
+				["description"] = L["Show the AutoGear score in tooltips of bags, quivers and ammo pouches.  Bags are scored by their number of slots.  Hiding the score does not stop AutoGear from equipping bigger bags."],
+				["toggleDescriptionTrue"] = L["Showing score in bag tooltips is now enabled."],
+				["toggleDescriptionFalse"] = L["Showing score in bag tooltips is now disabled."]
 			},
 			{
 				["option"] = "ReasonsInTooltips",
@@ -5284,7 +5296,9 @@ function AutoGearTooltipHook(tooltip, tooltipData)
 	local scoreWithBestSet
 	local bestSet
 	local scoreColor = HIGHLIGHT_FONT_COLOR
-	if info.shouldShowScoreInTooltip then
+	-- bags (scored by slot count) can be left out of tooltip scores on their own
+	local isHiddenBagScore = (not AutoGearDB.ScoreInBagTooltips) and AutoGearIsScoredBySlotCount(info)
+	if info.shouldShowScoreInTooltip and (not isHiddenBagScore) then
 		local shouldShowBestSet = ((info.is1hWeaponOrOffHand
 		or (info.numValidGearSlots and info.numValidGearSlots > 1))
 		and (not isAComparisonTooltip))

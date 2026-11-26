@@ -102,6 +102,12 @@ if GetLocale() == "deDE" then
 	T.Localization["Showing score in item tooltips is now enabled."] = "Anzeige der Wertung in Gegenstands-Tooltips ist jetzt aktiviert."
 	T.Localization["Showing score in item tooltips is now disabled."] = "Anzeige der Wertung in Gegenstands-Tooltips ist jetzt deaktiviert."
 
+	-- option: ScoreInBagTooltips
+	T.Localization["Show AutoGear score in bag tooltips"] = "AutoGear-Wertung in Taschen-Tooltips anzeigen"
+	T.Localization["Show the AutoGear score in tooltips of bags, quivers and ammo pouches.  Bags are scored by their number of slots.  Hiding the score does not stop AutoGear from equipping bigger bags."] = "Die AutoGear-Wertung im Tooltip von Taschen, Köchern und Munitionsbeuteln anzeigen.  Taschen werden nach ihrer Anzahl an Plätzen bewertet.  Ausgeblendet legt AutoGear größere Taschen trotzdem weiter an."
+	T.Localization["Showing score in bag tooltips is now enabled."] = "Anzeige der Wertung in Taschen-Tooltips ist jetzt aktiviert."
+	T.Localization["Showing score in bag tooltips is now disabled."] = "Anzeige der Wertung in Taschen-Tooltips ist jetzt deaktiviert."
+
 	-- option: ReasonsInTooltips
 	T.Localization["Show won't-equip reasons in item tooltips"] = "Gründe gegen das Anlegen in Gegenstands-Tooltips anzeigen"
 	T.Localization["Show reasons AutoGear won't automatically equip items in item tooltips, except when the score is lower than the equipped item's score."] = "Im Gegenstands-Tooltip anzeigen, warum AutoGear einen Gegenstand nicht automatisch anlegt – außer wenn die Wertung nur niedriger ist als die des angelegten Gegenstands."
